@@ -248,7 +248,7 @@ CLASS ZCL_VDM_PLANTUML_GENERATOR IMPLEMENTATION.
 
         " Filters Inclusion / Exclusion / Namespace
 
-        IF cds_name_upper  <> selection-cds_name. " Ignore Exclude and Include if its the Selection CDS ( So Our Parent doesn't get filtered out before we even start )
+        IF cds_name_upper  <> selection-cds_name. " Ignore Exclude, Include and Namespace if its the Selection CDS ( So Our Parent doesn't get filtered out before we even start )
 
           " 1. Exclusion List (Skip if specifically excluded)
           IF selection-exclude_cds IS NOT INITIAL
@@ -262,12 +262,12 @@ CLASS ZCL_VDM_PLANTUML_GENERATOR IMPLEMENTATION.
             RETURN.
           ENDIF.
 
-        ENDIF.
+          " 3. Namespace filter (If Requested)
+          IF selection-custom_developments_only = abap_true
+             AND NOT ( cds_name_upper CP 'Z*' OR cds_name_upper CP 'Y*' ).
+            RETURN.
+          ENDIF.
 
-        " 3. Namespace filter (If Requested)
-        IF selection-custom_developments_only = abap_true
-           AND NOT ( cds_name_upper CP 'Z*' OR cds_name_upper CP 'Y*' ).
-          RETURN.
         ENDIF.
 
         " Grab metadata from the adapter

@@ -119,7 +119,7 @@ CLASS ZCL_VDM_PLANTUML_XCO_ADP_CP IMPLEMENTATION.
         " so we return an empty table
         " this is a known issue in the XCO CLOUD API and there is currently no workaround for it, other than returning an empty table.
         " It is supported for on Premise ( With a few cheats) , but not for cloud, which is why we catch the exception and return an empty table in this case
-        APPEND 'Unknown (Possible Union)' TO sources.
+        CLEAR sources.
     ENDTRY.
   ENDMETHOD.
 
