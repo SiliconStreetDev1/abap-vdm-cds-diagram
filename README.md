@@ -105,7 +105,6 @@ The behavior of relationship lines (arrows) changes based on your `associations_
     * *Why use Detailed Mode?* Mapping lines directly to association fields is invaluable when a single CDS view has multiple associations to the same target view (e.g., `_CreatedByUser` and `_LastChangedByUser` both pointing to `I_User`).
 
 ---
-
 ## 🛠 Usage & Detailed Examples
 
 ### 1. Basic Generation with Granular Toggles
@@ -114,137 +113,162 @@ The engine splits relationship logic into two granular toggle sets:
 * **Lines (Auto-Discovery):** When a specific line type is enabled, the engine **automatically enables** discovery for that type.
 
 **Discovery Only (Entities without lines):**
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name          = 'I_BUSINESSPARTNER'
-  max_allowed_level = 2
-  discovery = VALUE #( inheritance = abap_true associations = abap_true compositions = abap_true )
-).
+```abap
+DATA(lo_renderer) = NEW zcl_vdm_diagram_plantuml( ).
 
-DATA(renderer) = NEW zcl_vdm_diagram_plantuml( hierarchies = parsed_hierarchies selection = selection ).
-DATA(plantuml_code) = renderer->build( ).
-~~~
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name          = 'I_BUSINESSPARTNER'
+    max_allowed_level = 2
+    discovery = VALUE #( inheritance = abap_true associations = abap_true compositions = abap_true )
+  )
+)->generate( ).
+```
 
 **Lines Only (Auto-discovers and draws lines):**
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name          = 'I_BUSINESSPARTNER'
-  max_allowed_level = 2
-  lines = VALUE #( inheritance = abap_true associations = abap_true compositions = abap_true )
-).
+```abap
+DATA(lo_renderer) = NEW zcl_vdm_diagram_mermaid( ).
 
-DATA(renderer) = NEW zcl_vdm_diagram_mermaid( hierarchies = parsed_hierarchies selection = selection ).
-DATA(mermaid_code) = renderer->build( ).
-~~~
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name          = 'I_BUSINESSPARTNER'
+    max_allowed_level = 2
+    lines = VALUE #( inheritance = abap_true associations = abap_true compositions = abap_true )
+  )
+)->generate( ).
+```
 
 ### 2. Advanced Filtering: Inclusions & Exclusions
 To prevent accidental empty diagrams, the root `cds_name` is always included by default.
 
 **Inclusion Strategy:**
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name          = 'I_BUSINESSPARTNER'
-  max_allowed_level = 2
-  lines             = VALUE #( associations = abap_true )
-  " INCLUSION: ONLY expand these views into boxes
-  include_cds       = VALUE #( ( cds_name = 'I_BPDATACONTROLLER' )
-                               ( cds_name = 'I_BPRELATIONSHIP_2' ) )
-).
-~~~
+```abap
+DATA(lo_renderer) = NEW zcl_vdm_diagram_plantuml( ).
+
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name          = 'I_BUSINESSPARTNER'
+    max_allowed_level = 2
+    lines             = VALUE #( associations = abap_true )
+    " INCLUSION: ONLY expand these views into boxes
+    include_cds       = VALUE #( ( cds_name = 'I_BPDATACONTROLLER' )
+                                 ( cds_name = 'I_BPRELATIONSHIP_2' ) )
+  )
+)->generate( ).
+```
 
 **Exclusion Strategy:**
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name          = 'I_BUSINESSPARTNER'
-  max_allowed_level = 2
-  lines             = VALUE #( associations = abap_true )
-  " EXCLUDE these views from selections
-  exclude_cds       = VALUE #( ( cds_name = 'I_BPDATACONTROLLER' )
-                               ( cds_name = 'I_BPRELATIONSHIP_2' ) )
-).
-~~~
+```abap
+DATA(lo_renderer) = NEW zcl_vdm_diagram_d2( ).
+
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name          = 'I_BUSINESSPARTNER'
+    max_allowed_level = 2
+    lines             = VALUE #( associations = abap_true )
+    " EXCLUDE these views from selections
+    exclude_cds       = VALUE #( ( cds_name = 'I_BPDATACONTROLLER' )
+                                 ( cds_name = 'I_BPRELATIONSHIP_2' ) )
+  )
+)->generate( ).
+```
 
 ### 3. Custom Development Filter (Z/Y Namespace)
 Hides standard SAP noise by only rendering entity boxes for your custom developments.
 
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name                 = 'ZR_BloxUIHeaderTP' 
-  max_allowed_level        = 6                   
-  lines                    = VALUE #( compositions = abap_true associations = abap_true ) 
-  custom_developments_only = abap_true " Only select entities starting with Z* or Y* ).
-~~~
+```abap
+DATA(lo_renderer) = NEW zcl_vdm_diagram_mermaid( ).
+
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name                 = 'ZR_BloxUIHeaderTP' 
+    max_allowed_level        = 6                   
+    lines                    = VALUE #( compositions = abap_true associations = abap_true ) 
+    custom_developments_only = abap_true " Only select entities starting with Z* or Y*
+  )
+)->generate( ).
+```
 
 ### 4. The "Kitchen Sink" / Full Layout Config (PlantUML)
 Generates a highly detailed, modern PlantUML diagram showing absolutely everything.
 
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name                       = 'ZI_SALESORDER'
-  keys                           = abap_true
-  fields                         = abap_true
-  base                           = abap_true
-  associations_fields            = abap_true 
-  lines-associations             = abap_true
-  lines-compositions             = abap_true
-  lines-inheritance              = abap_true
-  force_render_all_relationships = abap_false 
-).
-
-DATA(config) = VALUE zif_vdm_diagram_renderer=>ty_render_config(
+```abap
+DATA(lo_config) = VALUE zif_vdm_diagram_renderer=>ty_render_config(
   layout_direction = 'TB'
   routing_style    = 'ORTHO'  " Clean 90-degree routing
   theme            = 'MODERN' " Rounded corners, no shadows
   spacing          = 'WIDE'   " Maximum readability
 ).
 
-DATA(renderer) = NEW zcl_vdm_diagram_plantuml( hierarchies = parsed_hierarchies selection = selection config = config ).
-DATA(diagram_code) = renderer->build( ).
-~~~
+DATA(lo_renderer) = NEW zcl_vdm_diagram_plantuml( config = lo_config ).
+
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name                       = 'ZI_SALESORDER'
+    keys                           = abap_true
+    fields                         = abap_true
+    base                           = abap_true
+    associations_fields            = abap_true 
+    lines-associations             = abap_true
+    lines-compositions             = abap_true
+    lines-inheritance              = abap_true
+    force_render_all_relationships = abap_false 
+  )
+)->generate( ).
+```
 
 ### 5. The High-Level Architecture (Mermaid.js)
 Strips away noise, hiding fields and base tables. Perfect for GitHub Markdown.
 
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name                       = 'ZI_SALESORDER'
-  keys                           = abap_false  
-  fields                         = abap_false  
-  base                           = abap_false  
-  lines-associations             = abap_true
-  lines-compositions             = abap_true
-  lines-inheritance              = abap_true
-).
-
-DATA(config) = VALUE zif_vdm_diagram_renderer=>ty_render_config(
+```abap
+DATA(lo_config) = VALUE zif_vdm_diagram_renderer=>ty_render_config(
   layout_direction = 'LR' " Left to Right looks better for high-level flows
 ).
 
-DATA(renderer) = NEW zcl_vdm_diagram_mermaid( hierarchies = parsed_hierarchies selection = selection config = config ).
-DATA(diagram_code) = renderer->build( ).
-~~~
+DATA(lo_renderer) = NEW zcl_vdm_diagram_mermaid( config = lo_config ).
+
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name                       = 'ZI_SALESORDER'
+    keys                           = abap_false  
+    fields                         = abap_false  
+    base                           = abap_false  
+    lines-associations             = abap_true
+    lines-compositions             = abap_true
+    lines-inheritance              = abap_true
+  )
+)->generate( ).
+```
 
 ### 6. The Pure Database Schema (D2 Lang)
 Maps out a strict data schema using D2. Focuses only on keys, fields, and standard associations (foreign keys).
 
-~~~abap
-DATA(selection) = VALUE zcl_vdm_diagram_generator=>ty_selection(
-  cds_name                       = 'ZI_SALESORDER'
-  keys                           = abap_true
-  fields                         = abap_true
-  base                           = abap_true
-  lines-associations             = abap_true
-  lines-compositions             = abap_false " Turn off Composition
-  lines-inheritance              = abap_false " Turn off Inheritance
-  force_render_all_relationships = abap_true  " Force all target tables to draw
-).
+```abap
+DATA(lo_renderer) = NEW zcl_vdm_diagram_d2( ).
 
-DATA(renderer) = NEW zcl_vdm_diagram_d2( hierarchies = parsed_hierarchies selection = selection ).
-DATA(diagram_code) = renderer->build( ).
-~~~
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name                       = 'ZI_SALESORDER'
+    keys                           = abap_true
+    fields                         = abap_true
+    base                           = abap_true
+    lines-associations             = abap_true
+    lines-compositions             = abap_false " Turn off Composition
+    lines-inheritance              = abap_false " Turn off Inheritance
+    force_render_all_relationships = abap_true  " Force all target tables to draw
+  )
+)->generate( ).
+```
 
 ---
-
 ## 🗺 Roadmap
 
 **Fiori Application:** We are planning a full-stack SAP Fiori application to dynamically generate and display these diagrams interactively within the SAP environment.
