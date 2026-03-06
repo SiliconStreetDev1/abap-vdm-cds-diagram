@@ -58,7 +58,7 @@ The tool utilizes the Adapter Pattern to handle environment differences:
 
 ## ⚙️ Parameter Reference
 
-The generator is designed for inline usage. You pass a `selection` structure (what to draw) and a `config` structure (how to draw it) to the constructor of your chosen renderer.
+The generator is designed for inline usage. Passed to the **Generator**. Controls **what** data is extracted from SAP.
 
 ### 1. Content Selection Scope (`ty_selection`)
 Controls **what** data is extracted from the SAP XCO metadata and rendered onto the canvas. 
@@ -77,15 +77,14 @@ Controls **what** data is extracted from the SAP XCO metadata and rendered onto 
 | **`include_cds`** | `Table` | Whitelist: Only these views/entities will be expanded into boxes. |
 | **`exclude_cds`** | `Table` | Blacklist: These views/entities will be ignored by the generator. |
 
-### 2. Layout & Visual Formatting (`ty_render_config`)
-A universal configuration object controls the layout. **Note:** Because each engine handles layout differently, unsupported parameters are safely ignored by that specific engine.
+### 2. Engine-Specific Formatting (`format`)
+Passed to the **Renderer** constructor. Controls **how** the diagram looks.
 
-| Parameter | Accepted Values | PlantUML Engine | Mermaid.js Engine | D2 Lang Engine |
-| :--- | :--- | :--- | :--- | :--- |
-| **`layout_direction`**| `TB` or `LR` | Supported | Supported | Supported |
-| **`routing_style`** | `ORTHO`, `POLYLINE`, `DEFAULT`| Supported | *Ignored* (Native) | *Ignored* (Native) |
-| **`theme`** | `MODERN`, `CLASSIC` | Supported | *Ignored* (CSS) | *Ignored* (Internal) |
-| **`spacing`** | `WIDE`, `NORMAL` | Supported | *Ignored* (Native) | *Ignored* (Native) |
+| Engine | Key Format Parameters |
+| :--- | :--- |
+| **PlantUML** | `ortho`, `modern`, `polyline`, `spaced_out` |
+| **Mermaid** | `direction` (TB/LR) |
+| **D2 Lang** | `direction`, `sketch_mode`, `primary_color` |
 
 ---
 
