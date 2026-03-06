@@ -2,7 +2,7 @@
 
 Visualize your SAP CDS Virtual Data Model (VDM) hierarchies with ease.
 
-The **VDM Diagram Generator** is an ABAP tool designed to recursively discover and visualize CDS View relationships. Supporting **ASSOCIATIONS**, **COMPOSITIONS**, and **INHERITANCE**, this tool parses your metadata via the XCO Framework to generate syntax for your preferred rendering engine.
+The **VDM Diagram Generator** is an ABAP tool designed to recursively discover and visualize CDS View relationships. Supporting **ASSOCIATIONS**, **COMPOSITIONS**, and **INHERITANCE**, this tool parses your metadata via the XCO Framework to generate syntax for your preferred rendering engine. Currently it exports a String Table that you will need to export to a file.
 
 ### 🚀 What's New
 The generator has been completely re-architected to support a **multi-engine rendering model**. 
