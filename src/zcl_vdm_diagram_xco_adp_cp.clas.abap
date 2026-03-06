@@ -1,4 +1,4 @@
-"! <p class="shorttext synchronized">VDM PlantUML Generator</p>
+"! <p class="shorttext synchronized">VDM diagram Generator</p>
 "! © 2026 Silicon Street Limited. All Rights Reserved.
 "!
 "! USAGE TERMS:
@@ -15,26 +15,29 @@
 "! LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
 "!
 "! FOR COMMERCIAL LICENSING INQUIRIES: admin@siliconst.co.nz
+class ZCL_VDM_DIAGRAM_XCO_ADP_CP definition
+  public
+  final
+  create public .
 
-CLASS zcl_vdm_plantuml_xco_adp_cp DEFINITION
-  PUBLIC
-  FINAL
-  CREATE PUBLIC .
+public section.
 
-  PUBLIC SECTION.
+  interfaces ZIF_VDM_diagram_XCO_ADAPTER .
 
-
-    INTERFACES zif_vdm_plantuml_xco_adapter .
-
-    ALIASES:
-     get_CDS_Type FOR zif_vdm_plantuml_xco_adapter~get_cds_type,
-     get_associations FOR zif_vdm_plantuml_xco_adapter~get_associations,
-     get_compositions FOR zif_vdm_plantuml_xco_adapter~get_compositions,
-     get_fields FOR zif_vdm_plantuml_xco_adapter~get_fields,
-     get_Sources FOR zif_vdm_plantuml_xco_adapter~get_sources,
-     get_CDS_Name_By_DDL FOR zif_vdm_plantuml_xco_adapter~get_cds_name_from_ddl,
-     get_Cardinality  FOR zif_vdm_plantuml_xco_adapter~get_cardinality.
-
+  aliases GET_ASSOCIATIONS
+    for ZIF_VDM_diagram_XCO_ADAPTER~GET_ASSOCIATIONS .
+  aliases GET_CARDINALITY
+    for ZIF_VDM_diagram_XCO_ADAPTER~GET_CARDINALITY .
+  aliases GET_CDS_NAME_BY_DDL
+    for ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_NAME_FROM_DDL .
+  aliases GET_CDS_TYPE
+    for ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_TYPE .
+  aliases GET_COMPOSITIONS
+    for ZIF_VDM_diagram_XCO_ADAPTER~GET_COMPOSITIONS .
+  aliases GET_FIELDS
+    for ZIF_VDM_diagram_XCO_ADAPTER~GET_FIELDS .
+  aliases GET_SOURCES
+    for ZIF_VDM_diagram_XCO_ADAPTER~GET_SOURCES .
   PROTECTED SECTION.
 
   PRIVATE SECTION.
@@ -42,10 +45,68 @@ ENDCLASS.
 
 
 
-CLASS ZCL_VDM_PLANTUML_XCO_ADP_CP IMPLEMENTATION.
+CLASS ZCL_VDM_DIAGRAM_XCO_ADP_CP IMPLEMENTATION.
 
 
-  METHOD zif_vdm_plantuml_xco_adapter~get_cds_type.
+  METHOD GET_ASSOCIATIONS.
+
+    "Find the DDL source for the given CDS name and return all associations of the CDS entity
+    CASE me->get_CDS_Type( cds_name ).
+      WHEN 'V'. "CDS View (OLD)
+        associations = xco_cp_cds=>view( cds_name )->associations->all->get( ).
+      WHEN 'W'. "CDS View Entity (NEW)
+        associations = xco_cp_cds=>view_entity( cds_name )->associations->all->get( ).
+      WHEN OTHERS. " Other views don't have associations, so we return an empty table
+        CLEAR associations.
+    ENDCASE.
+
+  ENDMETHOD.
+
+
+  METHOD GET_COMPOSITIONS.
+
+    "Find the DDL source for the given CDS name and return all Compositions of the CDS entity
+    CASE me->get_CDS_Type( cds_name ).
+      WHEN 'V'. "CDS View (OLD)
+        compositions = xco_cp_cds=>view( cds_name )->compositions->all->get( ).
+      WHEN 'W'. "CDS View Entity (NEW)
+        compositions = xco_cp_cds=>view_entity( cds_name )->compositions->all->get( ).
+      WHEN OTHERS. " Other views don't have compositions, so we return an empty table
+        CLEAR compositions.
+    ENDCASE.
+
+  ENDMETHOD.
+
+
+  METHOD GET_FIELDS.
+
+    "Find the DDL source for the given CDS name and return all fields of the CDS entity
+    fields =  xco_cp_cds=>entity( cds_name )->fields->all->get( ).
+
+  ENDMETHOD.
+
+
+  method ZIF_VDM_diagram_XCO_ADAPTER~GET_CARDINALITY.
+
+   cardinality = currentcardinality.
+
+    IF hasparent = abap_true. "If its a Parent Relationship we only want to show the cardinality on the child side
+      cardinality-min = 1.
+      cardinality-max = 1.
+    ENDIF.
+
+  endmethod.
+
+
+  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_NAME_FROM_DDL.
+
+    " Sorry on Cloud we can't do much with this. So all CDS will just be upper case
+    ddlcds_name = to_upper( cds_name ).
+
+  ENDMETHOD.
+
+
+  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_TYPE.
 
     "Find the DDL source for the given CDS name and return the type of the CDS entity (e.g. CDS Entity , CDS Projection etc.)
     DATA(objectNameFilter) = xco_cp_abap_repository=>object_name->get_filter(
@@ -61,45 +122,7 @@ CLASS ZCL_VDM_PLANTUML_XCO_ADP_CP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD get_associations.
-
-    "Find the DDL source for the given CDS name and return all associations of the CDS entity
-    CASE me->get_CDS_Type( cds_name ).
-      WHEN 'V'. "CDS View (OLD)
-        associations = xco_cp_cds=>view( cds_name )->associations->all->get( ).
-      WHEN 'W'. "CDS View Entity (NEW)
-        associations = xco_cp_cds=>view_entity( cds_name )->associations->all->get( ).
-      WHEN OTHERS. " Other views don't have associations, so we return an empty table
-        CLEAR associations.
-    ENDCASE.
-
-  ENDMETHOD.
-
-
-  METHOD get_compositions.
-
-    "Find the DDL source for the given CDS name and return all Compositions of the CDS entity
-    CASE me->get_CDS_Type( cds_name ).
-      WHEN 'V'. "CDS View (OLD)
-        compositions = xco_cp_cds=>view( cds_name )->compositions->all->get( ).
-      WHEN 'W'. "CDS View Entity (NEW)
-        compositions = xco_cp_cds=>view_entity( cds_name )->compositions->all->get( ).
-      WHEN OTHERS. " Other views don't have compositions, so we return an empty table
-        CLEAR compositions.
-    ENDCASE.
-
-  ENDMETHOD.
-
-
-  METHOD get_fields.
-
-    "Find the DDL source for the given CDS name and return all fields of the CDS entity
-    fields =  xco_cp_cds=>entity( cds_name )->fields->all->get( ).
-
-  ENDMETHOD.
-
-
-  METHOD zif_vdm_plantuml_xco_adapter~get_sources.
+  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_SOURCES.
     TRY.
 
         " Find the DDL source for the given CDS name and return all Compositions of the CDS entity
@@ -122,24 +145,4 @@ CLASS ZCL_VDM_PLANTUML_XCO_ADP_CP IMPLEMENTATION.
         APPEND 'Unknown (Possible Union)' TO sources.
     ENDTRY.
   ENDMETHOD.
-
-
-  METHOD zif_vdm_plantuml_xco_adapter~get_cds_name_from_ddl.
-
-    " Sorry on Cloud we can't do much with this. So all CDS will just be upper case
-    ddlcds_name = to_upper( cds_name ).
-
-  ENDMETHOD.
-
-
-  method ZIF_VDM_PLANTUML_XCO_ADAPTER~get_cardinality.
-
-   cardinality = currentcardinality.
-
-    IF hasparent = abap_true. "If its a Parent Relationship we only want to show the cardinality on the child side
-      cardinality-min = 1.
-      cardinality-max = 1.
-    ENDIF.
-
-  endmethod.
 ENDCLASS.

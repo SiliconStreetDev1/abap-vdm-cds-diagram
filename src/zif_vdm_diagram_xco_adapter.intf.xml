@@ -3,7 +3,7 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOINTERF>
-    <CLSNAME>ZIF_VDM_PLANTUML_XCO_ADAPTER</CLSNAME>
+    <CLSNAME>ZIF_VDM_DIAGRAM_XCO_ADAPTER</CLSNAME>
     <LANGU>E</LANGU>
     <DESCRIPT>VDM PlantUML XCO Adapter</DESCRIPT>
     <EXPOSURE>2</EXPOSURE>

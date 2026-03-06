@@ -3,7 +3,7 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <DD01V>
-    <DOMNAME>ZVDM_PLANTUML_CDS_RELAT_TYPE</DOMNAME>
+    <DOMNAME>ZVDM_DIAGRAM_CDS_RELAT_TYPE</DOMNAME>
     <DDLANGUAGE>E</DDLANGUAGE>
     <DATATYPE>CHAR</DATATYPE>
     <LENG>000001</LENG>

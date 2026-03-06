@@ -3,10 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>ZCX_VDM_PLANTUML_GENERATOR</CLSNAME>
+    <CLSNAME>ZCL_VDM_DIAGRAM_GENERATOR</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>PlantUML Generator</DESCRIPT>
-    <CATEGORY>40</CATEGORY>
+    <DESCRIPT>VDM Diagram Generator Engine</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>
@@ -17,6 +16,21 @@
      <CMPNAME>CONSTRUCTOR</CMPNAME>
      <LANGU>E</LANGU>
      <DESCRIPT>CONSTRUCTOR</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>GENERATE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Generate</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>MESSAGES</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>XCO: Messages</DESCRIPT>
+    </SEOCOMPOTX>
+    <SEOCOMPOTX>
+     <CMPNAME>_ITERATE</CMPNAME>
+     <LANGU>E</LANGU>
+     <DESCRIPT>Iterate through CDS assoicaitons , compositions and inherit</DESCRIPT>
     </SEOCOMPOTX>
    </DESCRIPTIONS>
   </asx:values>

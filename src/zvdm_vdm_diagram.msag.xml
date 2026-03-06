@@ -3,14 +3,14 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <T100A>
-    <ARBGB>ZVDM_PLANTUML_GENER</ARBGB>
+    <ARBGB>ZVDM_VDM_DIAGRAM</ARBGB>
     <MASTERLANG>E</MASTERLANG>
     <STEXT>PlantUML VDM generator</STEXT>
    </T100A>
    <T100>
     <T100>
      <SPRSL>E</SPRSL>
-     <ARBGB>ZVDM_PLANTUML_GENER</ARBGB>
+     <ARBGB>ZVDM_VDM_DIAGRAM</ARBGB>
      <MSGNR>000</MSGNR>
      <TEXT>&amp; is mandatory</TEXT>
     </T100>

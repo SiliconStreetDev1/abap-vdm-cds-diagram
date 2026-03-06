@@ -1,4 +1,4 @@
-class ZCX_VDM_PLANTUML_GENERATOR definition
+class ZCX_VDM_DIAGRAM_GENERATOR definition
   public
   inheriting from CX_STATIC_CHECK
   create public .
@@ -21,7 +21,7 @@ public section.
 
   constants:
     begin of MANDATORY,
-      msgid type symsgid value 'ZVDM_PLANTUML_GENER',
+      msgid type symsgid value 'ZVDM_VDM_DIAGRAM',
       msgno type symsgno value '000',
       attr1 type scx_attrname value 'msgv1',
       attr2 type scx_attrname value '',
@@ -44,7 +44,7 @@ ENDCLASS.
 
 
 
-CLASS ZCX_VDM_PLANTUML_GENERATOR IMPLEMENTATION.
+CLASS ZCX_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
 
   method CONSTRUCTOR.
