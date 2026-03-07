@@ -55,7 +55,8 @@ They all inherit the base class <ZCL_VDM_DIAGRAM_BASE>
 ## ☁️ Cloud (BTP/ABAP Cloud) vs. On-Premise 
 The tool utilizes the Adapter Pattern to handle environment differences:
 * **On-Premise:** Broader access to the ABAP Repository. Includes fallback logic to parse DDL source code via regex if the XCO API encounters unreleased or complex UNION/JOIN statements that the standard API cannot yet handle.
-* **Cloud (BTP / Public Edition):** Restricted to Tier 1 (Cloud Optimized) ABAP. The generator only interacts with "Released" entities or those within your own software components. Low-level DDIC table reads (like `DDDLSVRC`) are prohibited.
+* **Cloud (BTP / Public Edition):** Restricted to Tier 1 (Cloud Optimized) ABAP. The generator only interacts with "Released" entities or those within your own software components. Low-level DDIC table reads (like `DDDLSVRC`) are prohibited. All CDS entities must have a contract assigned to be able to be used.
+
 
 ---
 ## ⚙️ Parameter Reference
