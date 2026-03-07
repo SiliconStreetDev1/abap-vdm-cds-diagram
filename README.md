@@ -41,12 +41,14 @@ Adding a new diagram language (e.g., DOT, Structurizr) requires **zero** changes
 
 ## 🎨 Supported Renderers
 
-| Renderer | Best For | Output Style  |
-| :--- | :--- | :--- | 
-| **PlantUML** | Complex, highly detailed enterprise models. | UML Class Diagrams | 
-| **Mermaid.js** | Quick embedding in GitHub, Azure DevOps, or Markdown. | UML Class Diagrams | 
-| **D2 Lang** | Modern, clean, declarative diagrams. | SQL Table Shapes |
+The generator uses the **Strategy Pattern**, allowing you to swap the visual output by injecting different renderer classes.
+They all inherit the base class <ZCL_VDM_DIAGRAM_BASE>
 
+| Renderer | Technical Class | Best For | Output Style | Key Features |
+| :--- | :--- | :--- | :--- | :--- |
+| **PlantUML** | `zcl_vdm_diagram_plantuml` | **Enterprise Modeling** | UML Class Diagram | Orthogonal routing, horizontal/vertical layouts, and detailed field grouping. |
+| **Mermaid.js** | `zcl_vdm_diagram_mermaid` | **Documentation & Web** | UML Class Diagram | Native support in GitHub/GitLab, Azure DevOps, and Notion. Extremely lightweight. |
+| **D2 Lang** | `zcl_vdm_diagram_d2` | **Modern Presentation** | SQL Table Shapes | ELK layout engine for optimized table routing, "Sketch" mode, and modern styling. |
 ---
 
 ## ☁️ Cloud (BTP/ABAP Cloud) vs. On-Premise 
@@ -55,13 +57,13 @@ The tool utilizes the Adapter Pattern to handle environment differences:
 * **Cloud (BTP / Public Edition):** Restricted to Tier 1 (Cloud Optimized) ABAP. The generator only interacts with "Released" entities or those within your own software components. Low-level DDIC table reads (like `DDDLSVRC`) are prohibited.
 
 ---
-
 ## ⚙️ Parameter Reference
 
-The generator is designed for inline usage. Passed to the **Generator**. Controls **what** data is extracted from SAP.
+The generator is designed for inline usage. 
 
 ### 1. Content Selection Scope (`ty_selection`)
 Controls **what** data is extracted from the SAP XCO metadata and rendered onto the canvas. 
+Passed to the **Generator** <ZCL_VDM_DIAGRAM_GENERATOR>. Controls **what** data is extracted from SAP.
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
@@ -77,8 +79,11 @@ Controls **what** data is extracted from the SAP XCO metadata and rendered onto 
 | **`include_cds`** | `Table` | Whitelist: Only these views/entities will be expanded into boxes. |
 | **`exclude_cds`** | `Table` | Blacklist: These views/entities will be ignored by the generator. |
 
+See Examples in this readme for usage. 
+
 ### 2. Engine-Specific Formatting (`format`)
 Passed to the **Renderer** constructor. Controls **how** the diagram looks.
+Passed to a Renderer class based on the base class <ZCL_VDM_DIAGRAM_BASE>
 
 | Engine | Key Format Parameters |
 | :--- | :--- |
