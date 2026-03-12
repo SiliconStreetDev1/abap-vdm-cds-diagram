@@ -7,7 +7,7 @@ The **VDM Diagram Generator** is an ABAP tool designed to recursively discover a
 
 ### 🚀 What's New
 The generator has been completely re-architected to support a **multi-engine rendering model**. 
-* **Three Output Formats:** Natively supports **PlantUML**, **Mermaid.js**, and **D2**.
+* **Four Output Formats:** Natively supports **PlantUML**, **GraphViz, **Mermaid.js**, and **D2**.
 * **Universal Configuration:** A single rendering configuration object controls layout, routing, and themes across all engines natively.
 Method pattern.
 
@@ -50,6 +50,7 @@ They all inherit the base class <ZCL_VDM_DIAGRAM_BASE>
 | **PlantUML** | `zcl_vdm_diagram_plantuml` | **Enterprise Modeling** | UML Class Diagram | Orthogonal routing, horizontal/vertical layouts, and detailed field grouping. |
 | **Mermaid.js** | `zcl_vdm_diagram_mermaid` | **Documentation & Web** | UML Class Diagram | Native support in GitHub/GitLab, Azure DevOps, and Notion. Extremely lightweight. |
 | **D2** | `zcl_vdm_diagram_d2` | **Modern Presentation** | SQL Table Shapes | ELK layout engine for optimized table routing, "Sketch" mode, and modern styling. |
+| **Graphviz** | `zcl_vdm_diagram_graphviz` | **Complex Database Schemas** | HTML-like Table Nodes | Unmatched automatic routing via the DOT engine. Features edge concentration, port binding for exact arrow placement, and monochrome print modes. |
 ---
 
 ## ☁️ Cloud (BTP/ABAP Cloud) vs. On-Premise 
@@ -92,6 +93,7 @@ Passed to a Renderer class based on the base class <ZCL_VDM_DIAGRAM_BASE>
 | **PlantUML** | `ortho`, `modern`, `polyline`, `spaced_out` |
 | **Mermaid** | `direction` (TB/LR) |
 | **D2** | `direction`, `sketch_mode`, `primary_color` |
+| **Graphviz** | `ortho`, `polyline`, `modern`, `spaced_out`, `left_to_right`, `concentrate_edges`, `monochrome` |
 
 ---
 
@@ -233,7 +235,36 @@ DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
 ```
 <img width="665" height="1130" alt="image" src="https://github.com/user-attachments/assets/3dbbf43f-06d6-4f29-a3e4-b6ce34f6f9af" />
 
-### 5. The High-Level Architecture (Mermaid.js)
+### 5. The "Kitchen Sink" / Full Layout Config (GraphViz)
+Generates a highly detailed, modern PlantUML diagram showing absolutely everything.
+
+```abap
+DATA(format) = VALUE zcl_vdm_diagram_graphviz=>ty_format(
+spaced_out    = abap_true
+).
+
+DATA(lo_renderer) = NEW zcl_vdm_diagram_graphviz( format ).
+
+DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
+  renderer  = lo_renderer
+  selection = VALUE #(
+    cds_name                       = 'ZR_BloxUIHeaderTP'
+    max_allowed_level = 3
+    keys                           = abap_true
+    fields                         = abap_true
+    base                           = abap_true
+    associations_fields            = abap_true
+    lines-associations             = abap_true
+    lines-compositions             = abap_true
+    lines-inheritance              = abap_true
+    force_render_all_relationships = abap_false
+  )
+)->generate( ).
+
+```
+<img width="1134" height="1896" alt="graphviz" src="https://github.com/user-attachments/assets/4701b7aa-ff68-4b7e-aafb-65112d55471d" />
+
+### 6. The High-Level Architecture (Mermaid.js)
 Strips away noise, hiding fields and base tables. Perfect for GitHub Markdown.
 
 ```abap
@@ -255,7 +286,7 @@ DATA(diagram_code) = NEW zcl_vdm_diagram_generator(
 ```
 <img width="1875" height="1395" alt="image" src="https://github.com/user-attachments/assets/57942c3c-385f-4fb4-a2a2-338d336dad5e" />
 
-### 6. The Pure Database Schema (D2)
+### 7. The Pure Database Schema (D2)
 Maps out a strict data schema using D2. Focuses only on keys, fields, and standard associations (foreign keys).
 
 ```abap
