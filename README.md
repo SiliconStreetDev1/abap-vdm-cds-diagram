@@ -7,7 +7,7 @@ The **VDM Diagram Generator** is an ABAP tool designed to recursively discover a
 
 ### 🚀 What's New
 The generator has been completely re-architected to support a **multi-engine rendering model**. 
-* **Four Output Formats:** Natively supports **PlantUML**, **GraphViz, **Mermaid.js**, and **D2**.
+* **Four Output Formats:** Natively supports **PlantUML**, **GraphViz**, **Mermaid.js**, and **D2**.
 * **Universal Configuration:** A single rendering configuration object controls layout, routing, and themes across all engines natively.
 Method pattern.
 
