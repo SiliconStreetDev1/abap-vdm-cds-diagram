@@ -1,4 +1,5 @@
 @EndUserText.label: 'Service Definition for VDM Diagrammer'
 define service ZUI_VDM_DIAGRAM_SD {
-  expose ZCE_VDM_DIAGRAM as Diagram;
+  expose ZCE_VDM_DIAGRAM            as Diagram;
+  expose ZCE_VDM_DIAGRAM_CDS_SEARCH as Search;
 }

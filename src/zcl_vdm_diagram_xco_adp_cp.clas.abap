@@ -148,5 +148,29 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP_CP IMPLEMENTATION.
 
 
   method ZIF_VDM_DIAGRAM_XCO_ADAPTER~SEARCH_FOR_CDS.
+
+    " 1. Validate input to prevent massive, unconstrained repository reads
+    IF cds_search_string IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    " 2. Normalize the search pattern
+    " Convert to uppercase and translate standard SAP wildcards (*) to SQL wildcards (%)
+    DATA(lv_pattern) = to_upper( cds_search_string ).
+    lv_pattern = replace( val = lv_pattern sub = '*' with = '%' occ = 0 ).
+
+    " 3. Build the XCO Object Name Filter using the pattern constraint
+    DATA(lo_name_filter) = xco_cp_abap_repository=>object_name->get_filter(
+      xco_cp_abap_sql=>constraint->contains_pattern( lv_pattern )
+    ).
+
+    " 4. Query the ABAP repository specifically for DDLs (Data Definition Language objects)
+    DATA(lt_ddl_objects) = xco_cp_abap_repository=>objects->ddls->where(
+      VALUE #( ( lo_name_filter ) )
+    )->in( xco_cp_abap=>repository )->get( ).
+
+    " 5. Extract the names from the returned XCO objects into the flat result table
+    cds_names = VALUE #( FOR lo_ddl IN lt_ddl_objects ( lo_ddl->name ) ).
+
   endmethod.
 ENDCLASS.

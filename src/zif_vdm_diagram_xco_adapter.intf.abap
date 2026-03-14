@@ -42,5 +42,7 @@ interface ZIF_VDM_DIAGRAM_XCO_ADAPTER
       value(CARDINALITY) type IF_XCO_CDS_ASSOCIATION_CONTENT=>TS_CARDINALITY .
   methods SEARCH_FOR_CDS
     importing
-      !CDS_NAMES type SXCO_T_CDS_OBJECT_NAMES .
+      !CDS_SEARCH_STRING type STRING
+    returning
+      value(CDS_NAMES) type SXCO_T_CDS_OBJECT_NAMES .
 endinterface.
