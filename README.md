@@ -14,10 +14,6 @@ While the core engine generates raw syntax strings, we have introduced a **Full-
 * **Export Center:** One-click downloads for **SVG**, high-resolution **PNG** (rasterized at 2x DPI), or raw Source Code.
 * **Variant Management:** Save filtering and layout configurations to local cache for instant re-selection.
 * **Contextual Help:** Integrated help system explains every technical toggle and relationship mode.
-
-
-
-  
 ---
 
 ### 🚀 What's New
