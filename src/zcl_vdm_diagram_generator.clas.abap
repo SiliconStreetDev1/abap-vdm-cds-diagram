@@ -11,33 +11,33 @@
 "! 4. MODIFICATIONS: Any modifications remain subject to this license.
 "!
 "! FOR COMMERCIAL LICENSING INQUIRIES: admin@siliconst.co.nz
-class ZCL_VDM_DIAGRAM_GENERATOR definition
-  public
-  final
-  create public .
+CLASS zcl_vdm_diagram_generator DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
 
-public section.
+  PUBLIC SECTION.
 
-  types:
-    " =========================================================================
-    " TYPES & CONFIGURATION
-    " =========================================================================
-    "Granular toggles to control which relationships are discovered and drawn
-    BEGIN OF ty_granular_toggle,
+    TYPES:
+      " =========================================================================
+      " TYPES & CONFIGURATION
+      " =========================================================================
+      "Granular toggles to control which relationships are discovered and drawn
+      BEGIN OF ty_granular_toggle,
         inheritance  TYPE abap_bool,
         associations TYPE abap_bool,
         compositions TYPE abap_bool,
       END OF ty_granular_toggle .
-  types:
-    "Structure for inclusion/exclusion filtering
-    BEGIN OF ty_cds_name_filter,
+    TYPES:
+      "Structure for inclusion/exclusion filtering
+      BEGIN OF ty_cds_name_filter,
         cds_name TYPE sxco_cds_object_name,
       END OF ty_cds_name_filter .
-  types:
-    tty_cds_name_filter TYPE TABLE OF ty_cds_name_filter WITH DEFAULT KEY .
-  types:
-    "The primary configuration payload passed by the user
-    BEGIN OF ty_selection,
+    TYPES:
+      tty_cds_name_filter TYPE TABLE OF ty_cds_name_filter WITH DEFAULT KEY .
+    TYPES:
+      "The primary configuration payload passed by the user
+      BEGIN OF ty_selection,
         cds_name                       TYPE sxco_cds_object_name,
 
         " Discovery (Which entities to find via recursion)
@@ -65,11 +65,11 @@ public section.
         include_cds                    TYPE tty_cds_name_filter,
         exclude_cds                    TYPE tty_cds_name_filter,
       END OF ty_selection .
-  types:
-    " =========================================================================
-    " INTERNAL HIERARCHY TYPES (Passed to the Renderer)
-    " =========================================================================
-    BEGIN OF ty_cds_relationship,
+    TYPES:
+      " =========================================================================
+      " INTERNAL HIERARCHY TYPES (Passed to the Renderer)
+      " =========================================================================
+      BEGIN OF ty_cds_relationship,
         target           TYPE sxco_cds_object_name,
         target_uppercase TYPE sxco_cds_object_name,
         alias            TYPE sxco_ddef_alias_name,
@@ -78,10 +78,10 @@ public section.
         is_parent        TYPE abap_bool,
         cardinality      TYPE if_xco_cds_association_content=>ts_cardinality,
       END OF ty_cds_relationship .
-  types:
-    tty_cds_relationship TYPE TABLE OF ty_cds_relationship WITH DEFAULT KEY .
-  types:
-    BEGIN OF ty_cds_hierarchy,
+    TYPES:
+      tty_cds_relationship TYPE TABLE OF ty_cds_relationship WITH DEFAULT KEY .
+    TYPES:
+      BEGIN OF ty_cds_hierarchy,
         cds_name_uppercase TYPE sxco_cds_object_name,
         sources            TYPE TABLE OF sxco_cds_object_name WITH DEFAULT KEY,
         union              TYPE abap_bool,
@@ -92,11 +92,11 @@ public section.
         compositions       TYPE sxco_t_cds_compositions,
         relationships      TYPE tty_cds_relationship,
       END OF ty_cds_hierarchy .
-  types:
-    tty_cds_hierarchy TYPE SORTED TABLE OF ty_cds_hierarchy WITH NON-UNIQUE KEY index .
+    TYPES:
+      tty_cds_hierarchy TYPE SORTED TABLE OF ty_cds_hierarchy WITH NON-UNIQUE KEY index .
 
-  constants:
-    BEGIN OF c_relation_type,
+    CONSTANTS:
+      BEGIN OF c_relation_type,
         association TYPE zvdm_diagram_cds_relat_type VALUE 'A',
         composition TYPE zvdm_diagram_cds_relat_type VALUE 'C',
         inheritance TYPE zvdm_diagram_cds_relat_type VALUE 'I',
@@ -107,23 +107,31 @@ public section.
     " =========================================================================
     "! Initializes the generator with the user's configuration and preferred renderer
     "! @parameter selection   | The configuration scope (root entity, depth, toggles)
-    "! @parameter format      | Global layout preferences (e.g., ortho lines)
-    "! @parameter io_renderer | Constructor Injection: The specific engine (PlantUML, Mermaid, etc.) to use.
-  methods CONSTRUCTOR
-    importing
-      !SELECTION type TY_SELECTION
-      !RENDERER type ref to ZIF_VDM_DIAGRAM_RENDERER optional
-    raising
-      ZCX_VDM_DIAGRAM_GENERATOR .
+    "! @parameter renderer | Constructor Injection: The specific engine (PlantUML, Mermaid, etc.) to use.
+    METHODS constructor
+      IMPORTING
+        !selection TYPE ty_selection
+        !renderer  TYPE REF TO zif_vdm_diagram_renderer OPTIONAL
+      RAISING
+        zcx_vdm_diagram_generator .
+
+    " ---------------------------------------------------------------------
+    " Web API Adapter
+    " Converts the line-by-line internal logic table into a continuous string
+    " for seamless OData V4 transport.
+    " ---------------------------------------------------------------------
+    METHODS generate_as_string
+      RETURNING VALUE(rv_diagram_string) TYPE string.
+
     "! Executes the data extraction and triggers the injected rendering engine
     "! @parameter diagram_code | The final string table containing the diagram syntax
-  methods GENERATE
-    returning
-      value(DIAGRAM_CODE) type STRING_TABLE .
+    METHODS generate
+      RETURNING
+        VALUE(diagram_code) TYPE string_table .
     "! Retrieves any errors or warnings encountered during XCO parsing
-  methods GET_MESSAGES
-    returning
-      value(MESSAGES) type SXCO_T_MESSAGES .
+    METHODS get_messages
+      RETURNING
+        VALUE(messages) TYPE sxco_t_messages .
   PROTECTED SECTION.
     DATA hierarchies TYPE tty_cds_hierarchy.
     DATA selection   TYPE ty_selection.
@@ -143,6 +151,9 @@ public section.
     METHODS _initialize_xco_adapter RAISING zcx_vdm_diagram_generator.
     METHODS _is_cloud RETURNING VALUE(is_cloud) TYPE abap_bool.
     METHODS _determine_relationships CHANGING !cs_hierarchy TYPE ty_cds_hierarchy.
+
+
+
 
   PRIVATE SECTION.
     METHODS _initialize_selection.
@@ -175,6 +186,7 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
 
   METHOD generate.
+
     _initialize_on_generate( ).
 
     " 1. Extract all the SAP data recursively starting from the root CDS
@@ -381,5 +393,19 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
           textid = zcx_vdm_diagram_generator=>mandatory
           msgv1  = 'CDS Name'.
     ENDIF.
+  ENDMETHOD.
+
+
+  METHOD generate_as_string.
+
+    "Execute the standard generation engine (returns a table of strings)
+    DATA(lt_code) = me->generate( ).
+
+    " Compress into a single payload using the classic ABAP statement.
+
+    CONCATENATE LINES OF lt_code
+      INTO rv_diagram_string
+      SEPARATED BY cl_abap_char_utilities=>newline.
+
   ENDMETHOD.
 ENDCLASS.

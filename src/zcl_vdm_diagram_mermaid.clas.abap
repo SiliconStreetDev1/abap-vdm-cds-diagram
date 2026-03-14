@@ -66,7 +66,8 @@ CLASS ZCL_VDM_DIAGRAM_MERMAID IMPLEMENTATION.
 
     " List all the base tables or views that make up this entity
     LOOP AT base_sources INTO DATA(source).
-      DATA(basetext) =  COND #( WHEN is_union_entity = abap_true THEN 'Union' ELSE 'Base' ) .
+      " FIX: Explicitly cast to 'string' instead of using '#' to prevent syntax dump
+      DATA(basetext) =  COND string( WHEN is_union_entity = abap_true THEN 'Union' ELSE 'Base' ) .
       add_text( |{ basetext } { source }| ).
     ENDLOOP.
 
@@ -81,18 +82,20 @@ CLASS ZCL_VDM_DIAGRAM_MERMAID IMPLEMENTATION.
   METHOD zif_vdm_diagram_hooks~on_entity_end.
     " Close the class definition block
     add_text( |  \}| ).
-
-    " In Mermaid, styles cannot be applied inline during class definition.
-    " They must be applied globally outside the class block. Here we highlight the focal entity.
-    IF is_focal_entity = abap_true.
-      add_text( |  style { alias } fill:gray,stroke:#333,stroke-width:2px| ).
-    ENDIF.
   ENDMETHOD.
 
 
   METHOD zif_vdm_diagram_hooks~on_entity_start.
     " Open the class definition block using the entity alias
     add_text( |  class { alias } \{| ).
+
+    " 2. HIGHLIGHT LOGIC: Use a UML Stereotype for the focal entity.
+    " This is 100% safe in all Mermaid versions and will show up
+    " at the top of the box in the Fiori UI and in any downloaded code.
+    IF is_focal_entity = abap_true.
+      add_text( |    << Focal Entity >>| ).
+    ENDIF.
+
   ENDMETHOD.
 
 
