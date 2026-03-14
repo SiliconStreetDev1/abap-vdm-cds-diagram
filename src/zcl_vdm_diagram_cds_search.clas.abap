@@ -23,132 +23,114 @@ ENDCLASS.
 
 CLASS zcl_vdm_diagram_cds_search IMPLEMENTATION.
 
-* <SIGNATURE>---------------------------------------------------------------------------------------+
-* | Instance Public Method ZCL_VDM_DIAGRAM_CDS_SEARCH->IF_RAP_QUERY_PROVIDER~SELECT
-* +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_REQUEST                     TYPE REF TO IF_RAP_QUERY_REQUEST
-* | [--->] IO_RESPONSE                    TYPE REF TO IF_RAP_QUERY_RESPONSE
-* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD if_rap_query_provider~select.
-    DATA: lt_result     TYPE STANDARD TABLE OF zce_vdm_diagram_cds_search,
-          lt_result_all TYPE STANDARD TABLE OF zce_vdm_diagram_cds_search.
+    DATA: paged_results TYPE STANDARD TABLE OF zce_vdm_diagram_cds_search,
+          all_results   TYPE STANDARD TABLE OF zce_vdm_diagram_cds_search.
 
-    " 1. ENTERPRISE HARDENING: Wrap the entire execution in a TRY/CATCH.
-    " If the XCO framework fails or memory limits are hit, we return an empty payload
-    " rather than causing a system dump (ST22) and crashing the Fiori app.
+    " 1. ENTERPRISE HARDENING
+    " Wrap execution in a TRY block to prevent ST22 dumps from framework or memory issues.
     TRY.
-        " Extract the search query from the UI5 request
-        DATA(lv_search_string) = get_search_string( io_request ).
+        " Identify the user's search intent
+        DATA(search_query) = get_search_string( io_request ).
 
-        " 2. UX ENHANCEMENT: Implicit Wildcards for Type-Ahead
-        " If the user types "ZBLX" without a wildcard, standard SQL looks for exact matches.
-        " For a UI5 F4 help, we want "starts with" behavior unless explicitly wildcarded.
-        IF lv_search_string IS NOT INITIAL AND
-           lv_search_string NS '*' AND
-           lv_search_string NS '%'.
-          lv_search_string = lv_search_string && '*'.
+        " 2. UX ENHANCEMENT: Implicit Wildcards
+        " If the user didn't provide a wildcard, append one to allow 'starts with' behavior.
+        IF search_query IS NOT INITIAL AND
+           search_query NS '*' AND
+           search_query NS '%'.
+          search_query = search_query && '*'.
         ENDIF.
 
-        " 3. PARANOIA CHECK: Prevent massive unconstrained DB loads.
-        " If completely empty (user just opens the dialog), default to 'Z*'
-        " to only fetch custom objects and save database load.
-        IF lv_search_string IS INITIAL.
-          lv_search_string = 'Z*'.
+        " 3. PERFORMANCE GUARD
+        " Default to custom objects (Z*) if the search is empty to minimize DB load.
+        IF search_query IS INITIAL.
+          search_query = 'Z*'.
         ENDIF.
 
-        " 4. Execute the search via the XCO Adapter
-        DATA(lo_xco_adapter) = NEW zcl_vdm_diagram_xco_adp( ).
-        DATA(lt_cds_names)   = lo_xco_adapter->zif_vdm_diagram_xco_adapter~search_for_cds( lv_search_string ).
+        " 4. Data Retrieval
+        DATA(xco_adapter) = NEW zcl_vdm_diagram_xco_adp( ).
+        DATA(cds_names)   = xco_adapter->zif_vdm_diagram_xco_adapter~search_for_cds( search_query ).
 
-        " 5. Map the raw string array into the Custom Entity structure
-        lt_result_all = VALUE #( FOR lv_name IN lt_cds_names ( cdsname = lv_name ) ).
+        " 5. Mapping
+        " Map the string list into the custom entity structure using a modern constructor.
+        all_results = VALUE #( FOR cds_name IN cds_names ( cdsname = cds_name ) ).
 
-        " 6. Sort results alphabetically to ensure consistent UI5 pagination
-        SORT lt_result_all BY cdsname ASCENDING.
+        " 6. Sort for Pagination Consistency
+        SORT all_results BY cdsname ASCENDING.
 
-        " 7. Handle standard OData $count requests (Required for UI5 Smart Controls)
-        IF io_request->is_total_numb_of_rec_requested( ) = abap_true.
-          io_response->set_total_number_of_records( lines( lt_result_all ) ).
+        " 7. Handle $count Requests
+        IF io_request->is_total_numb_of_rec_requested( ).
+          io_response->set_total_number_of_records( lines( all_results ) ).
         ENDIF.
 
-        " 8. Handle standard OData $top and $skip requests (Pagination)
-        IF io_request->is_data_requested( ) = abap_true.
-          DATA(lo_paging) = io_request->get_paging( ).
-          DATA(lv_offset) = lo_paging->get_offset( ).
-          DATA(lv_page_size) = lo_paging->get_page_size( ).
+        " 8. Handle Pagination ($top / $skip)
+        IF io_request->is_data_requested( ).
+          DATA(paging)      = io_request->get_paging( ).
+          DATA(offset)      = paging->get_offset( ).
+          DATA(page_size)   = paging->get_page_size( ).
+          DATA(total_lines) = lines( all_results ).
 
-          DATA(lv_total_lines) = lines( lt_result_all ).
+          " Scenario: UI5 requests the entire set
+          IF page_size = if_rap_query_paging=>page_size_unlimited.
+            paged_results = all_results.
 
-          " If UI5 requests all data (-1)
-          IF lv_page_size = if_rap_query_paging=>page_size_unlimited.
-            lt_result = lt_result_all.
-
-
-          " Only page if offset is safely within the bounds of the actual data
-          ELSEIF lv_offset < lv_total_lines.
-
-            " Calculate the safe maximum index to read up to, preventing ITAB_ILLEGAL_INDEX dumps
-            DATA(lv_max_index) = lv_offset + lv_page_size.
-            IF lv_max_index > lv_total_lines.
-              lv_max_index = lv_total_lines.
+          " Scenario: Standard paging within data bounds
+          ELSEIF offset < total_lines.
+            " Determine safe upper bound to avoid index errors
+            DATA(max_index) = offset + page_size.
+            IF max_index > total_lines.
+              max_index = total_lines.
             ENDIF.
 
-            " Slice the internal table to match the requested page
-            LOOP AT lt_result_all ASSIGNING FIELD-SYMBOL(<ls_result>)
-                 FROM ( lv_offset + 1 )
-                 TO lv_max_index.
-              APPEND <ls_result> TO lt_result.
+            " Slice the internal table to the requested window
+            LOOP AT all_results ASSIGNING FIELD-SYMBOL(<result_row>)
+                 FROM ( offset + 1 )
+                 TO max_index.
+              APPEND <result_row> TO paged_results.
             ENDLOOP.
-
           ENDIF.
 
-          " Return the final payload to the RAP framework
-          io_response->set_data( lt_result ).
+          " Dispatch final data to the RAP framework
+          io_response->set_data( paged_results ).
         ENDIF.
 
-      CATCH cx_root INTO DATA(lx_root).
-        " Graceful fallback on error: Send empty dataset back to UI.
-        " This ensures the UI5 app does not crash, even if the backend fails.
-        io_response->set_data( lt_result ).
-        IF io_request->is_total_numb_of_rec_requested( ) = abap_true.
+      CATCH cx_root.
+        " Graceful Fallback: Return empty results on any system exception.
+        io_response->set_data( paged_results ).
+        IF io_request->is_total_numb_of_rec_requested( ).
           io_response->set_total_number_of_records( 0 ).
         ENDIF.
     ENDTRY.
 
   ENDMETHOD.
 
-* <SIGNATURE>---------------------------------------------------------------------------------------+
-* | Instance Private Method ZCL_VDM_DIAGRAM_CDS_SEARCH->GET_SEARCH_STRING
-* +-------------------------------------------------------------------------------------------------+
-* | [--->] IO_REQUEST                     TYPE REF TO IF_RAP_QUERY_REQUEST
-* | [<-()] RV_SEARCH_STRING               TYPE        STRING
-* +--------------------------------------------------------------------------------------</SIGNATURE>
   METHOD get_search_string.
-
-    " Check 1: Did the user type into the generic OData search bar?
+    " Primary source: Generic OData search bar
     rv_search_string = io_request->get_search_expression( ).
 
-    " Check 2: If the search bar is empty, did they use the specific column filter?
+    " Secondary source: Column-specific filtering (CDSNAME)
     IF rv_search_string IS INITIAL.
       TRY.
-          DATA(lt_ranges) = io_request->get_filter( )->get_as_ranges( ).
-          ASSIGN lt_ranges[ name = 'CDSNAME' ] TO FIELD-SYMBOL(<ls_range>).
+          DATA(filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
 
-          IF sy-subrc = 0 AND lines( <ls_range>-range ) > 0.
-            " Extract the 'LOW' value from the first condition of the range
-            rv_search_string = <ls_range>-range[ 1 ]-low.
+          " Look specifically for the CDSNAME filter component
+          ASSIGN filter_ranges[ name = 'CDSNAME' ] TO FIELD-SYMBOL(<cds_name_filter>).
 
-            " Handle 'Contains Pattern' (CP) operators gracefully from UI5 filters
-            IF <ls_range>-range[ 1 ]-option = 'CP' AND rv_search_string NS '*'.
+          IF sy-subrc = 0 AND lines( <cds_name_filter>-range ) > 0.
+            " Use the first range condition provided by the UI
+            DATA(first_condition) = <cds_name_filter>-range[ 1 ].
+            rv_search_string = first_condition-low.
+
+            " Transform 'Contains Pattern' operators from UI5 into valid search wildcards
+            IF first_condition-option = 'CP' AND rv_search_string NS '*'.
                rv_search_string = '*' && rv_search_string && '*'.
             ENDIF.
           ENDIF.
 
         CATCH cx_rap_query_filter_no_range.
-          " No filter parameters were provided, string remains initial
+          " No filters defined; return initial search string
       ENDTRY.
     ENDIF.
-
   ENDMETHOD.
 
 ENDCLASS.
