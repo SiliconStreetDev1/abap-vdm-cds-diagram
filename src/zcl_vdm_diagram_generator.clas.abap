@@ -132,36 +132,36 @@ CLASS zcl_vdm_diagram_generator DEFINITION
     METHODS get_messages
       RETURNING
         VALUE(messages) TYPE sxco_t_messages .
-  PROTECTED SECTION.
-    DATA hierarchies TYPE tty_cds_hierarchy.
-    DATA selection   TYPE ty_selection.
-    DATA messages    TYPE sxco_t_messages.
-    DATA xco_adapter TYPE REF TO zif_vdm_diagram_xco_adapter.
+protected section.
 
-    DATA renderer    TYPE REF TO zif_vdm_diagram_renderer.
+  data HIERARCHIES type TTY_CDS_HIERARCHY .
+  data SELECTION type TY_SELECTION .
+  data MESSAGES type SXCO_T_MESSAGES .
+  data XCO_ADAPTER type ref to ZIF_VDM_DIAGRAM_XCO_ADAPTER .
+  data RENDERER type ref to ZIF_VDM_DIAGRAM_RENDERER .
 
-    METHODS _iterate
-      IMPORTING
-        !cds_name       TYPE sxco_cds_object_name
-        !child_cds_name TYPE sxco_cds_object_name OPTIONAL
-        !current_level  TYPE int4.
-
-    METHODS _validate_selection RAISING zcx_vdm_diagram_generator.
-    METHODS _initialize_on_generate.
-    METHODS _initialize_xco_adapter RAISING zcx_vdm_diagram_generator.
-    METHODS _is_cloud RETURNING VALUE(is_cloud) TYPE abap_bool.
-    METHODS _determine_relationships CHANGING !cs_hierarchy TYPE ty_cds_hierarchy.
-
-
-
-
+  methods _ITERATE
+    importing
+      !CDS_NAME type SXCO_CDS_OBJECT_NAME
+      !CHILD_CDS_NAME type SXCO_CDS_OBJECT_NAME optional
+      !CURRENT_LEVEL type INT4 .
+  methods _VALIDATE_SELECTION
+    raising
+      ZCX_VDM_DIAGRAM_GENERATOR .
+  methods _INITIALIZE_ON_GENERATE .
+  methods _INITIALIZE_XCO_ADAPTER
+    raising
+      ZCX_VDM_DIAGRAM_GENERATOR .
+  methods _DETERMINE_RELATIONSHIPS
+    changing
+      !CS_HIERARCHY type TY_CDS_HIERARCHY .
   PRIVATE SECTION.
     METHODS _initialize_selection.
 ENDCLASS.
 
 
 
-CLASS zcl_vdm_diagram_generator IMPLEMENTATION.
+CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
 
   METHOD constructor.
@@ -283,38 +283,7 @@ CLASS zcl_vdm_diagram_generator IMPLEMENTATION.
 
 
   METHOD _initialize_xco_adapter.
-    " Dynamic instantiation of the environment-specific adapter to avoid syntax errors
-    " if Cloud objects are missing in an On-Premise system.
-    DATA(class_name) = COND string(
-      WHEN _is_cloud( ) = abap_true THEN 'ZCL_VDM_DIAGRAM_XCO_ADP_CP'
-      ELSE                               'ZCL_VDM_DIAGRAM_XCO_ADP'
-    ).
-
-    TRY.
-        CREATE OBJECT xco_adapter TYPE (class_name).
-      CATCH cx_sy_create_object_error.
-        TRY.
-            CREATE OBJECT xco_adapter TYPE ('ZCL_VDM_DIAGRAM_XCO_ADP_CP'). " Fallback to Cloud adapter, even in On-Premise ( Maybe someone deleted it ?).
-          CATCH cx_sy_create_object_error.
-        ENDTRY.
-    ENDTRY.
-  ENDMETHOD.
-
-
-  METHOD _is_cloud.
-    " We check if the XCO Tenant is 'Empty'.
-    " In BTP, this returns the subaccount/tenant details.
-    " In On-Premise, it returns an initial/unassigned state.
-    DATA(tenant) = xco_cp=>current->tenant( ).
-    TRY.
-        IF tenant->get_id( ) IS INITIAL.
-          is_cloud = abap_false.
-        ELSE.
-          is_cloud = abap_true.
-        ENDIF.
-      CATCH cx_root.
-        is_cloud = abap_false.
-    ENDTRY.
+    xco_adapter =  zcl_vdm_diagram_xco_factory=>get_xco_adapter( ).
   ENDMETHOD.
 
 

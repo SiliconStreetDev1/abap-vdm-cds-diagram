@@ -21,7 +21,10 @@ CLASS zcl_vdm_diagram_cds_search DEFINITION
         VALUE(rv_search_string) TYPE string.
 ENDCLASS.
 
-CLASS zcl_vdm_diagram_cds_search IMPLEMENTATION.
+
+
+CLASS ZCL_VDM_DIAGRAM_CDS_SEARCH IMPLEMENTATION.
+
 
   METHOD if_rap_query_provider~select.
     DATA: paged_results TYPE STANDARD TABLE OF zce_vdm_diagram_cds_search,
@@ -48,8 +51,8 @@ CLASS zcl_vdm_diagram_cds_search IMPLEMENTATION.
         ENDIF.
 
         " 4. Data Retrieval
-        DATA(xco_adapter) = NEW zcl_vdm_diagram_xco_adp( ).
-        DATA(cds_names)   = xco_adapter->zif_vdm_diagram_xco_adapter~search_for_cds( search_query ).
+        DATA(xco_adapter) = ZCL_VDM_DIAGRAM_XCO_FACTORY=>get_xco_adapter( ).
+        DATA(cds_names)   = xco_adapter->search_for_cds( search_query ).
 
         " 5. Mapping
         " Map the string list into the custom entity structure using a modern constructor.
@@ -104,6 +107,7 @@ CLASS zcl_vdm_diagram_cds_search IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD get_search_string.
     " Primary source: Generic OData search bar
     rv_search_string = io_request->get_search_expression( ).
@@ -132,5 +136,4 @@ CLASS zcl_vdm_diagram_cds_search IMPLEMENTATION.
       ENDTRY.
     ENDIF.
   ENDMETHOD.
-
 ENDCLASS.
