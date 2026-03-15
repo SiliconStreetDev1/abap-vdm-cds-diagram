@@ -32,6 +32,7 @@ Method pattern.
 ## 📋 Compatibility & Requirements
 
 * **Primary Support:** **SAP S/4HANA 2023** and higher
+* **Secondary support for ABAP Cloud**
 * **Legacy Support (S/4HANA 2022):** The tool may function on 2022, but it is **not fully supported**.
     * *Note:* The XCO Framework underwent significant API changes between 2022 and 2023. You may encounter "Method Not Found" exceptions or incorrect cardinality mapping on older releases.
 * **XCO Framework:** Standard availability in modern S/4HANA and BTP is required.
