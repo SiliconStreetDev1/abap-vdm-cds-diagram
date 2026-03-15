@@ -6,6 +6,7 @@ The **VDM Diagram Generator** is an ABAP tool designed to recursively discover a
 
 ## 🖥️ Interactive Fiori UI App
 While the core engine generates raw syntax strings, we have introduced a **Full-Stack SAP Fiori Application** to make visualization instant and interactive. 
+Activation of the OData V4 Service Binding ***ZUI_VDM_DIAGRAM_O4*** is required.
 
 **Repository:** [abap-vdm-cds-diagram-ui](https://github.com/SiliconStreetDev1/abap-vdm-cds-diagram-ui)
 
@@ -16,6 +17,8 @@ While the core engine generates raw syntax strings, we have introduced a **Full-
 * **Contextual Help:** Integrated help system explains every technical toggle and relationship mode.
 
 <img width="2113" height="1824" alt="Image" src="https://github.com/user-attachments/assets/4398560e-8ced-4463-8471-5f1ffe05b4a6" />
+
+
 ---
 
 ### 🚀 What's New
