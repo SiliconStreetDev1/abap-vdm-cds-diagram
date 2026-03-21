@@ -20,15 +20,18 @@ ENDCLASS.
 CLASS zcl_vdm_diagram_query IMPLEMENTATION.
 
   METHOD if_rap_query_provider~select.
+    " -------------------------------------------------------------------------
+    " 0. DATA DECLARATIONS
+    " -------------------------------------------------------------------------
     DATA diagrams TYPE STANDARD TABLE OF zce_vdm_diagram WITH DEFAULT KEY.
     DATA diagram  TYPE zce_vdm_diagram.
 
-    " Primary entity filters
+    " Primary entity filters captured from the UI5 SmartTable/FilterBar
     DATA cds_filter         TYPE string.
     DATA engine_key         TYPE string.
-    DATA format_config_json TYPE string. " Captures the JSON payload from the UI
+    DATA format_config_json TYPE string. " Captures the JSON formatting payload from the UI
 
-    " Default configuration variables
+    " Default structural configuration variables (Node detail depth)
     DATA max_level       TYPE i VALUE 1.
     DATA show_base       TYPE abap_boolean VALUE abap_false.
     DATA show_keys       TYPE abap_boolean VALUE abap_false.
@@ -36,28 +39,32 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
     DATA assoc_fields    TYPE abap_boolean VALUE abap_false.
     DATA custom_only     TYPE abap_boolean VALUE abap_false.
 
-    " Line rendering configurations
+    " Line rendering configurations (What edges to draw)
     DATA line_assoc      TYPE abap_boolean VALUE abap_true.
     DATA line_comp       TYPE abap_boolean VALUE abap_true.
     DATA line_inherit    TYPE abap_boolean VALUE abap_true.
 
-    " Discovery (traversal) configurations
+    " Discovery/Traversal configurations (Which paths to follow down the tree)
     DATA disc_assoc      TYPE abap_boolean VALUE abap_true.
     DATA disc_comp       TYPE abap_boolean VALUE abap_true.
     DATA disc_inherit    TYPE abap_boolean VALUE abap_true.
 
-    " Raw comma-separated lists from UI5 MultiInputs
+    " Raw comma-separated lists for targeted View inclusion/exclusion
     DATA include_string  TYPE string.
     DATA exclude_string  TYPE string.
 
     " -------------------------------------------------------------------------
     " 1. STRICT RAP CONTRACT FULFILLMENT (Paging)
+    " Extract paging details to ensure we don't over-fetch if the UI is just
+    " checking for total counts or scrolling.
     " -------------------------------------------------------------------------
     DATA(paging) = io_request->get_paging( ).
     DATA(offset) = paging->get_offset( ).
 
     " -------------------------------------------------------------------------
     " 2. EXTRACT ALL FILTERS SAFELY
+    " Loop through the incoming RAP ranges and assign them to our typed variables.
+    " We use to_upper() to ensure case-insensitive matching for boolean flags.
     " -------------------------------------------------------------------------
     TRY.
         DATA(filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
@@ -69,7 +76,7 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
           CASE to_upper( filter_range-name ).
             WHEN 'CDSNAME'.         cds_filter         = filter_range-range[ 1 ]-low.
             WHEN 'RENDERERENGINE'.  engine_key         = filter_range-range[ 1 ]-low.
-            WHEN 'FORMATCONFIG'.    format_config_json = filter_range-range[ 1 ]-low. " Capture JSON string
+            WHEN 'FORMATCONFIG'.    format_config_json = filter_range-range[ 1 ]-low.
             WHEN 'MAXLEVEL'.        max_level          = filter_range-range[ 1 ]-low.
             WHEN 'SHOWBASE'.        show_base          = is_true.
             WHEN 'SHOWKEYS'.        show_keys          = is_true.
@@ -87,10 +94,13 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
           ENDCASE.
         ENDLOOP.
       CATCH cx_root.
+        " Silently catch missing filters to allow defaults to persist
     ENDTRY.
 
     " -------------------------------------------------------------------------
     " 3. HANDLE EXITS & PAGING TRAPS
+    " If no root CDS view is provided, or the UI is requesting a second page
+    " (offset > 0) for a single diagram, exit early to save processing power.
     " -------------------------------------------------------------------------
     IF cds_filter IS INITIAL OR offset > 0.
       IF io_request->is_data_requested( ).
@@ -104,6 +114,7 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
 
     " -------------------------------------------------------------------------
     " 4. POST-VALIDATION MAP
+    " Assign the core identifiers to the outgoing RAP entity record.
     " -------------------------------------------------------------------------
     diagram-cdsname        = cds_filter.
     diagram-rendererengine = engine_key.
@@ -111,6 +122,7 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
 
     " -------------------------------------------------------------------------
     " 5. PARSE COMMA-SEPARATED WHITELIST/BLACKLIST
+    " Convert UI5 comma-separated strings into standard ABAP tables for the generator.
     " -------------------------------------------------------------------------
     DATA include_list TYPE sxco_t_cds_object_names.
     DATA exclude_list TYPE sxco_t_cds_object_names.
@@ -127,8 +139,9 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
 
     " -------------------------------------------------------------------------
     " 6. STRATEGY FACTORY & DYNAMIC DESERIALIZATION
-    " Instantiate the correct engine and pass the JSON payload directly into
-    " the renderer's specific ABAP format structure without modifying the renderers.
+    " We use /UI2/CL_JSON here specifically because UI5 JSON payloads are
+    " loosely typed. /UI2 handles type coercion (string to int) and ignores
+    " extra fields, preventing XSLT Data Loss dumps.
     " -------------------------------------------------------------------------
     DATA renderer TYPE REF TO zcl_vdm_diagram_base.
 
@@ -157,6 +170,21 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
         renderer = NEW zcl_vdm_diagram_d2( format = d2_format ).
         diagram-fileextension = '.d2'.
 
+      WHEN 'CYTOSCAPE'. " <-- INTERACTIVE ENGINE
+        DATA cytoscape_format TYPE zcl_vdm_diagram_cytoscape=>ty_format.
+        IF format_config_json IS NOT INITIAL.
+          " We apply pretty_mode here so UI5's layoutAlgorithm maps to layout_algorithm safely
+          /ui2/cl_json=>deserialize(
+            EXPORTING
+              json        = format_config_json
+              pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+            CHANGING
+              data        = cytoscape_format
+          ).
+        ENDIF.
+        renderer = NEW zcl_vdm_diagram_cytoscape( format = cytoscape_format ).
+        diagram-fileextension = '.json'.
+
       WHEN OTHERS. " MERMAID as default
         DATA mermaid_format TYPE zcl_vdm_diagram_mermaid=>ty_format.
         IF format_config_json IS NOT INITIAL.
@@ -168,6 +196,8 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
 
     " -------------------------------------------------------------------------
     " 7. GENERATION ENGINE EXECUTOR
+    " Pass the fully configured Selection parameters and the specific Renderer
+    " instance into the core Generator.
     " -------------------------------------------------------------------------
     TRY.
         DATA(generator) = NEW zcl_vdm_diagram_generator(
@@ -191,6 +221,7 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
           )
         ).
 
+        " Execute the traversal loop and extract the final payload string
         diagram-diagrampayload = generator->generate_as_string( ).
 
       CATCH cx_root INTO DATA(exception).
@@ -201,6 +232,7 @@ CLASS zcl_vdm_diagram_query IMPLEMENTATION.
 
     " -------------------------------------------------------------------------
     " 8. RESPOND TO RAP FRAMEWORK
+    " Return the constructed entity record back to the UI5 OData service.
     " -------------------------------------------------------------------------
     IF io_request->is_data_requested( ).
       io_response->set_data( diagrams ).
