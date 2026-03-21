@@ -11,6 +11,7 @@ Activation of the OData V4 Service Binding ***ZUI_VDM_DIAGRAM_O4*** is required.
 **Repository:** [abap-vdm-cds-diagram-ui](https://github.com/SiliconStreetDev1/abap-vdm-cds-diagram-ui)
 
 * **Live Preview:** Instantly render PlantUML, Mermaid.js, and Graphviz (WASM) diagrams directly within your browser.
+* **NEW:** The Cytoscape engine transforms the diagram from a static map into a "Discovery Environment."
 * **Interactivity:** Drag, zoom, and pan across complex VDM webs with automatic aspect-ratio protection.
 * **Export Center:** One-click downloads for **SVG**, high-resolution **PNG** (rasterized at 2x DPI), or raw Source Code.
 * **Variant Management:** Save filtering and layout configurations to local cache for instant re-selection.
