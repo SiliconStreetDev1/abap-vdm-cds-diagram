@@ -15,7 +15,7 @@ Activation of the OData V4 Service Binding ***ZUI_VDM_DIAGRAM_O4*** is required.
 * **Export Center:** One-click downloads for **SVG**, high-resolution **PNG** (rasterized at 2x DPI), or raw Source Code.
 * **Variant Management:** Save filtering and layout configurations to local cache for instant re-selection.
 * **Contextual Help:** Integrated help system explains every technical toggle and relationship mode.
-
+* **Preview: https://www.youtube.com/watch?v=FRI9ZK2F20w**
 <img width="2113" height="1824" alt="Image" src="https://github.com/user-attachments/assets/4398560e-8ced-4463-8471-5f1ffe05b4a6" />
 
 
