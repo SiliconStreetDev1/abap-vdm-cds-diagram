@@ -192,12 +192,6 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD GET_FIELDS.
-    " Fetch all fields for the given entity
-    fields = xco_cds=>entity( cds_name )->fields->all->get( ).
-  ENDMETHOD.
-
-
   METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_NAME_FROM_DDL.
 
     " PURPOSE: Normalizes the CDS DDL name by parsing the source code.
@@ -321,5 +315,11 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
     " 5. Extract the names from the returned XCO objects into the flat result table
     cds_names = VALUE #( FOR lo_ddl IN lt_ddl_objects ( lo_ddl->name ) ).
 
+  ENDMETHOD.
+
+
+  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_FIELDS.
+    " Fetch all fields for the given entity
+    fields = xco_cds=>entity( cds_name )->fields->all->get( ).
   ENDMETHOD.
 ENDCLASS.
