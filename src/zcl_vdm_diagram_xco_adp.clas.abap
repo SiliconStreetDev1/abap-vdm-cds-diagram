@@ -77,95 +77,6 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD GET_ASSOCIATIONS.
-    " Associations are type-specific in XCO; determine the type first
-    CASE me->get_cds_type( cds_name ).
-      WHEN 'V'. associations = xco_cds=>view( cds_name )->associations->all->get( ).
-      WHEN 'W'. associations = xco_cds=>view_entity( cds_name )->associations->all->get( ).
-      WHEN OTHERS. CLEAR associations.
-    ENDCASE.
-  ENDMETHOD.
-
-
-  METHOD GET_CARDINALITY.
-
-    "----> Additional Cardinality logic
-    " XCO occasionally returns [0..1] for associations defined as [1] due to how
-    " underlying keys are analyzed. This logic parses the DDL source to force
-    " [1..1] when [1] is explicitly defined in the source code.
-
-    cardinality = currentcardinality.
-
-    IF hasparent = abap_true. "If its a Parent Relationship we only want to show the cardinality on the child side
-      cardinality-min = 1.
-      cardinality-max = 1.
-      return.
-    ENDIF.
-
-    " Only process if the current cardinality is 0..1
-    IF NOT ( cardinality-max = 1 AND cardinality-min = 0 ).
-      RETURN.
-    ENDIF.
-
-    "Get DDL Source
-    DATA(source) = get_ddl_source( cds_name ).
-    IF source IS INITIAL OR assocname IS INITIAL.
-      RETURN.
-    ENDIF.
-
-    " 1. Locate the specific association alias
-    FIND FIRST OCCURRENCE OF assocname IN source IGNORING CASE MATCH OFFSET DATA(name_off).
-    IF sy-subrc <> 0.
-      RETURN.
-    ENDIF.
-
-    " 2. Look backwards to find the preceding 'ASSOCIATION' keyword
-    DATA(prefix) = substring( val = source len = name_off ).
-    DATA(start_off) = find( val = to_upper( prefix ) sub = 'ASSOCIATION' occ = -1 ).
-
-    IF start_off < 0.
-      RETURN.
-    ENDIF.
-
-    " 3. Isolate the line fragment
-    DATA(line) = substring( val = source off = start_off len = name_off - start_off + strlen( assocname ) ).
-
-    " 4. Prepare the association name for the regex (manually escape forward slashes if present)
-    DATA(esc_name) = replace( val = assocname sub = '/' with = '\/' occ = 0 ).
-    DATA(pattern) = `(?i)association\s*(?:\[([^\]]*)\])?[^;]*?\bas\s+` && esc_name && `\b`.
-
-    DATA(matches) = extract_regex_matches( pattern = pattern text = line ).
-
-    IF lines( matches ) > 0.
-      DATA(match) = matches[ 1 ].
-
-      " 5. Check for explicit [ 1 ]
-      IF lines( match-submatches ) > 0 AND match-submatches[ 1 ]-length > 0.
-        DATA(s) = match-submatches[ 1 ].
-        DATA(val) = condense( val = substring( val = line off = s-offset len = s-length ) from = ` ` to = `` ).
-
-        IF val = '1'.
-          cardinality-min = 1.
-          cardinality-max = 1.
-        ENDIF.
-      ENDIF.
-
-    ENDIF.
-
-
-  ENDMETHOD.
-
-
-  METHOD GET_COMPOSITIONS.
-    " Compositions are type-specific in XCO; determine the type first
-    CASE me->get_cds_type( cds_name ).
-      WHEN 'V'. compositions = xco_cds=>view( cds_name )->compositions->all->get( ).
-      WHEN 'W'. compositions = xco_cds=>view_entity( cds_name )->compositions->all->get( ).
-      WHEN OTHERS. CLEAR compositions.
-    ENDCASE.
-  ENDMETHOD.
-
-
   METHOD GET_DDL_SOURCE.
     " Get Raw DDL source code for a given CDS name, with caching to optimize performance.
     DATA(normalized_name) = to_upper( cds_name ).
@@ -322,4 +233,93 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
     " Fetch all fields for the given entity
     fields = xco_cds=>entity( cds_name )->fields->all->get( ).
   ENDMETHOD.
+
+
+  METHOD ZIF_VDM_diagram_XCO_ADAPTER~get_associations.
+    " Associations are type-specific in XCO; determine the type first
+    CASE me->get_cds_type( cds_name ).
+      WHEN 'V'. associations = xco_cds=>view( cds_name )->associations->all->get( ).
+      WHEN 'W'. associations = xco_cds=>view_entity( cds_name )->associations->all->get( ).
+      WHEN OTHERS. CLEAR associations.
+    ENDCASE.
+  ENDMETHOD.
+
+
+  method ZIF_VDM_DIAGRAM_XCO_ADAPTER~GET_CARDINALITY.
+
+
+    "----> Additional Cardinality logic
+    " XCO occasionally returns [0..1] for associations defined as [1] due to how
+    " underlying keys are analyzed. This logic parses the DDL source to force
+    " [1..1] when [1] is explicitly defined in the source code.
+
+    cardinality = currentcardinality.
+
+    IF hasparent = abap_true. "If its a Parent Relationship we only want to show the cardinality on the child side
+      cardinality-min = 1.
+      cardinality-max = 1.
+      return.
+    ENDIF.
+
+    " Only process if the current cardinality is 0..1
+    IF NOT ( cardinality-max = 1 AND cardinality-min = 0 ).
+      RETURN.
+    ENDIF.
+
+    "Get DDL Source
+    DATA(source) = get_ddl_source( cds_name ).
+    IF source IS INITIAL OR assocname IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    " 1. Locate the specific association alias
+    FIND FIRST OCCURRENCE OF assocname IN source IGNORING CASE MATCH OFFSET DATA(name_off).
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    " 2. Look backwards to find the preceding 'ASSOCIATION' keyword
+    DATA(prefix) = substring( val = source len = name_off ).
+    DATA(start_off) = find( val = to_upper( prefix ) sub = 'ASSOCIATION' occ = -1 ).
+
+    IF start_off < 0.
+      RETURN.
+    ENDIF.
+
+    " 3. Isolate the line fragment
+    DATA(line) = substring( val = source off = start_off len = name_off - start_off + strlen( assocname ) ).
+
+    " 4. Prepare the association name for the regex (manually escape forward slashes if present)
+    DATA(esc_name) = replace( val = assocname sub = '/' with = '\/' occ = 0 ).
+    DATA(pattern) = `(?i)association\s*(?:\[([^\]]*)\])?[^;]*?\bas\s+` && esc_name && `\b`.
+
+    DATA(matches) = extract_regex_matches( pattern = pattern text = line ).
+
+    IF lines( matches ) > 0.
+      DATA(match) = matches[ 1 ].
+
+      " 5. Check for explicit [ 1 ]
+      IF lines( match-submatches ) > 0 AND match-submatches[ 1 ]-length > 0.
+        DATA(s) = match-submatches[ 1 ].
+        DATA(val) = condense( val = substring( val = line off = s-offset len = s-length ) from = ` ` to = `` ).
+
+        IF val = '1'.
+          cardinality-min = 1.
+          cardinality-max = 1.
+        ENDIF.
+      ENDIF.
+
+    ENDIF.
+  endmethod.
+
+
+  method ZIF_VDM_DIAGRAM_XCO_ADAPTER~GET_COMPOSITIONS.
+        " Compositions are type-specific in XCO; determine the type first
+    CASE me->get_cds_type( cds_name ).
+      WHEN 'V'. compositions = xco_cds=>view( cds_name )->compositions->all->get( ).
+      WHEN 'W'. compositions = xco_cds=>view_entity( cds_name )->compositions->all->get( ).
+      WHEN OTHERS. CLEAR compositions.
+    ENDCASE.
+
+  endmethod.
 ENDCLASS.

@@ -48,44 +48,6 @@ ENDCLASS.
 CLASS ZCL_VDM_DIAGRAM_XCO_ADP_CP IMPLEMENTATION.
 
 
-  METHOD GET_ASSOCIATIONS.
-
-    "Find the DDL source for the given CDS name and return all associations of the CDS entity
-    CASE me->get_CDS_Type( cds_name ).
-      WHEN 'V'. "CDS View (OLD)
-        associations = xco_cp_cds=>view( cds_name )->associations->all->get( ).
-      WHEN 'W'. "CDS View Entity (NEW)
-        associations = xco_cp_cds=>view_entity( cds_name )->associations->all->get( ).
-      WHEN OTHERS. " Other views don't have associations, so we return an empty table
-        CLEAR associations.
-    ENDCASE.
-
-  ENDMETHOD.
-
-
-  METHOD GET_COMPOSITIONS.
-
-    "Find the DDL source for the given CDS name and return all Compositions of the CDS entity
-    CASE me->get_CDS_Type( cds_name ).
-      WHEN 'V'. "CDS View (OLD)
-        compositions = xco_cp_cds=>view( cds_name )->compositions->all->get( ).
-      WHEN 'W'. "CDS View Entity (NEW)
-        compositions = xco_cp_cds=>view_entity( cds_name )->compositions->all->get( ).
-      WHEN OTHERS. " Other views don't have compositions, so we return an empty table
-        CLEAR compositions.
-    ENDCASE.
-
-  ENDMETHOD.
-
-
-  METHOD GET_FIELDS.
-
-    "Find the DDL source for the given CDS name and return all fields of the CDS entity
-    fields =  xco_cp_cds=>entity( cds_name )->fields->all->get( ).
-
-  ENDMETHOD.
-
-
   method ZIF_VDM_diagram_XCO_ADAPTER~GET_CARDINALITY.
 
    cardinality = currentcardinality.
@@ -173,4 +135,42 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP_CP IMPLEMENTATION.
     cds_names = VALUE #( FOR lo_ddl IN lt_ddl_objects ( lo_ddl->name ) ).
 
   endmethod.
+
+
+  METHOD  ZIF_VDM_diagram_XCO_ADAPTER~GET_ASSOCIATIONS.
+
+    "Find the DDL source for the given CDS name and return all associations of the CDS entity
+    CASE me->get_CDS_Type( cds_name ).
+      WHEN 'V'. "CDS View (OLD)
+        associations = xco_cp_cds=>view( cds_name )->associations->all->get( ).
+      WHEN 'W'. "CDS View Entity (NEW)
+        associations = xco_cp_cds=>view_entity( cds_name )->associations->all->get( ).
+      WHEN OTHERS. " Other views don't have associations, so we return an empty table
+        CLEAR associations.
+    ENDCASE.
+
+  ENDMETHOD.
+
+
+  METHOD  ZIF_VDM_diagram_XCO_ADAPTER~GET_COMPOSITIONS.
+
+    "Find the DDL source for the given CDS name and return all Compositions of the CDS entity
+    CASE me->get_CDS_Type( cds_name ).
+      WHEN 'V'. "CDS View (OLD)
+        compositions = xco_cp_cds=>view( cds_name )->compositions->all->get( ).
+      WHEN 'W'. "CDS View Entity (NEW)
+        compositions = xco_cp_cds=>view_entity( cds_name )->compositions->all->get( ).
+      WHEN OTHERS. " Other views don't have compositions, so we return an empty table
+        CLEAR compositions.
+    ENDCASE.
+
+  ENDMETHOD.
+
+
+  METHOD  ZIF_VDM_diagram_XCO_ADAPTER~GET_FIELDS.
+
+    "Find the DDL source for the given CDS name and return all fields of the CDS entity
+    fields =  xco_cp_cds=>entity( cds_name )->fields->all->get( ).
+
+  ENDMETHOD.
 ENDCLASS.
