@@ -1,0 +1,9 @@
+@EndUserText.label: 'Access Control for VDM Variants'
+@MappingRole:true
+define role ZI_VDM_Diagram_Variant {
+  grant
+    select
+      on
+        ZI_VDM_Diagram_Variant
+          where CreatedBy = aspect user  or IsGlobal = 'X';
+}

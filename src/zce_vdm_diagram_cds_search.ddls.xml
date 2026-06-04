@@ -7,7 +7,6 @@
     <DDLANGUAGE>E</DDLANGUAGE>
     <DDTEXT>CDS Search for VDM Diagrams</DDTEXT>
     <SOURCE_TYPE>Q</SOURCE_TYPE>
-    <ABAP_LANGUAGE_VERSION>5</ABAP_LANGUAGE_VERSION>
    </DDLS>
   </asx:values>
  </asx:abap>

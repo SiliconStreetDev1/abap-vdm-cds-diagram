@@ -2,4 +2,5 @@
 define service ZUI_VDM_DIAGRAM_SD {
   expose ZCE_VDM_DIAGRAM            as Diagram;
   expose ZCE_VDM_DIAGRAM_CDS_SEARCH as Search;
+  expose ZC_VDM_Diagram_Variant     as Variant;
 }

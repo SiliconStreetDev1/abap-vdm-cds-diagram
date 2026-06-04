@@ -1,0 +1,31 @@
+managed implementation in class zbp_r_vdm_variant_tp unique;
+strict ( 2 );
+
+define behavior for ZR_VDM_Diagram_Variant_TP alias Variant
+persistent table zvdm_diag_var
+lock master
+authorization master ( instance )
+etag master LastChangedAt
+{
+  create;
+  update;
+  delete;
+
+  field ( numbering : managed, readonly ) VariantId;
+  field ( readonly ) CreatedBy, CreatedAt, LastChangedAt, LocalLastChangedAt;
+
+  validation validateMandatoryFields on save { create; update; }
+
+  mapping for zvdm_diag_var
+  {
+    VariantId = variant_id;
+    VariantName = variant_name;
+    CdsName = cds_name;
+    CreatedBy = created_by;
+    CreatedAt = created_at;
+    LastChangedAt = last_changed_at;
+    LocalLastChangedAt = local_last_changed_at;
+    IsGlobal = is_global;
+    Configuration = configuration;
+  }
+}
