@@ -22,21 +22,24 @@ CLASS zcl_vdm_diagram_generator DEFINITION
       " =========================================================================
       " TYPES & CONFIGURATION
       " =========================================================================
-      "Granular toggles to control which relationships are discovered and drawn
+      " Granular toggles to control which relationships are discovered and drawn
       BEGIN OF ty_granular_toggle,
         inheritance  TYPE abap_bool,
         associations TYPE abap_bool,
         compositions TYPE abap_bool,
       END OF ty_granular_toggle .
+
     TYPES:
-      "Structure for inclusion/exclusion filtering
+      " Structure for inclusion/exclusion filtering
       BEGIN OF ty_cds_name_filter,
         cds_name TYPE sxco_cds_object_name,
       END OF ty_cds_name_filter .
+
     TYPES:
       tty_cds_name_filter TYPE TABLE OF ty_cds_name_filter WITH DEFAULT KEY .
+
     TYPES:
-      "The primary configuration payload passed by the user
+      " The primary configuration payload passed by the user interface
       BEGIN OF ty_selection,
         cds_name                       TYPE sxco_cds_object_name,
 
@@ -65,10 +68,12 @@ CLASS zcl_vdm_diagram_generator DEFINITION
         include_cds                    TYPE tty_cds_name_filter,
         exclude_cds                    TYPE tty_cds_name_filter,
       END OF ty_selection .
+
     TYPES:
       " =========================================================================
       " INTERNAL HIERARCHY TYPES (Passed to the Renderer)
       " =========================================================================
+      " Defines an outgoing structural relationship (line) between two entities
       BEGIN OF ty_cds_relationship,
         target           TYPE sxco_cds_object_name,
         target_uppercase TYPE sxco_cds_object_name,
@@ -78,9 +83,12 @@ CLASS zcl_vdm_diagram_generator DEFINITION
         is_parent        TYPE abap_bool,
         cardinality      TYPE if_xco_cds_association_content=>ts_cardinality,
       END OF ty_cds_relationship .
+
     TYPES:
       tty_cds_relationship TYPE TABLE OF ty_cds_relationship WITH DEFAULT KEY .
+
     TYPES:
+      " Represents a fully parsed entity box and its connections
       BEGIN OF ty_cds_hierarchy,
         cds_name_uppercase TYPE sxco_cds_object_name,
         sources            TYPE TABLE OF sxco_cds_object_name WITH DEFAULT KEY,
@@ -92,8 +100,13 @@ CLASS zcl_vdm_diagram_generator DEFINITION
         compositions       TYPE sxco_t_cds_compositions,
         relationships      TYPE tty_cds_relationship,
       END OF ty_cds_hierarchy .
+
     TYPES:
-      tty_cds_hierarchy TYPE SORTED TABLE OF ty_cds_hierarchy WITH NON-UNIQUE KEY index .
+      " PERFORMANCE FIX: Added secondary unique hashed key 'by_name'.
+      " This drops the lookup complexity from O(N) to O(1) during the recursion checks.
+      tty_cds_hierarchy TYPE SORTED TABLE OF ty_cds_hierarchy
+                        WITH NON-UNIQUE KEY index
+                        WITH UNIQUE HASHED KEY by_name COMPONENTS cds_name_uppercase .
 
     CONSTANTS:
       BEGIN OF c_relation_type,
@@ -106,8 +119,8 @@ CLASS zcl_vdm_diagram_generator DEFINITION
     " PUBLIC METHODS
     " =========================================================================
     "! Initializes the generator with the user's configuration and preferred renderer
-    "! @parameter selection   | The configuration scope (root entity, depth, toggles)
-    "! @parameter renderer | Constructor Injection: The specific engine (PlantUML, Mermaid, etc.) to use.
+    "! @parameter selection  | The configuration scope (root entity, depth, toggles)
+    "! @parameter renderer   | Constructor Injection: The specific engine (PlantUML, Mermaid, etc.) to use.
     METHODS constructor
       IMPORTING
         !selection TYPE ty_selection
@@ -128,34 +141,46 @@ CLASS zcl_vdm_diagram_generator DEFINITION
     METHODS generate
       RETURNING
         VALUE(diagram_code) TYPE string_table .
+
     "! Retrieves any errors or warnings encountered during XCO parsing
     METHODS get_messages
       RETURNING
         VALUE(messages) TYPE sxco_t_messages .
-protected section.
 
-  data HIERARCHIES type TTY_CDS_HIERARCHY .
-  data SELECTION type TY_SELECTION .
-  data MESSAGES type SXCO_T_MESSAGES .
-  data XCO_ADAPTER type ref to ZIF_VDM_DIAGRAM_XCO_ADAPTER .
-  data RENDERER type ref to ZIF_VDM_DIAGRAM_RENDERER .
+  PROTECTED SECTION.
+    DATA hierarchies TYPE tty_cds_hierarchy .
+    DATA selection   TYPE ty_selection .
+    DATA messages    TYPE sxco_t_messages .
+    DATA xco_adapter TYPE REF TO zif_vdm_diagram_xco_adapter .
+    DATA renderer    TYPE REF TO zif_vdm_diagram_renderer .
 
-  methods _ITERATE
-    importing
-      !CDS_NAME type SXCO_CDS_OBJECT_NAME
-      !CHILD_CDS_NAME type SXCO_CDS_OBJECT_NAME optional
-      !CURRENT_LEVEL type INT4 .
-  methods _VALIDATE_SELECTION
-    raising
-      ZCX_VDM_DIAGRAM_GENERATOR .
-  methods _INITIALIZE_ON_GENERATE .
-  methods _INITIALIZE_XCO_ADAPTER
-    raising
-      ZCX_VDM_DIAGRAM_GENERATOR .
-  methods _DETERMINE_RELATIONSHIPS
-    changing
-      !CS_HIERARCHY type TY_CDS_HIERARCHY .
+    "! Recursive engine that traverses down the VDM tree
+    METHODS _iterate
+      IMPORTING
+        !cds_name       TYPE sxco_cds_object_name
+        !child_cds_name TYPE sxco_cds_object_name OPTIONAL
+        !current_level  TYPE int4 .
+
+    "! Asserts mandatory selection inputs are present before generation
+    METHODS _validate_selection
+      RAISING
+        zcx_vdm_diagram_generator .
+
+    "! Flushes internal state before a new generation run
+    METHODS _initialize_on_generate .
+
+    "! Instantiates the correct XCO adapter (Cloud vs On-Premise) based on system landscape
+    METHODS _initialize_xco_adapter
+      RAISING
+        zcx_vdm_diagram_generator .
+
+    "! Maps structural relationships into the hierarchy based on user toggles
+    METHODS _determine_relationships
+      CHANGING
+        !cs_hierarchy TYPE ty_cds_hierarchy .
+
   PRIVATE SECTION.
+    "! Normalizes user input config to prevent case-sensitivity misses
     METHODS _initialize_selection.
 ENDCLASS.
 
@@ -166,7 +191,6 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
   METHOD constructor.
     me->selection = selection.
-
 
     " 1. Dependency Injection: Store the passed engine, or default to PlantUML
     IF renderer IS BOUND.
@@ -186,7 +210,6 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
 
   METHOD generate.
-
     _initialize_on_generate( ).
 
     " 1. Extract all the SAP data recursively starting from the root CDS
@@ -197,8 +220,7 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
     "    injected rendering engine to generate the syntax.
     diagram_code = me->renderer->build(
                      hierarchies = me->hierarchies
-                     selection   = me->selection
-                     ).
+                     selection   = me->selection ).
   ENDMETHOD.
 
 
@@ -208,15 +230,16 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
 
   METHOD _determine_relationships.
-    " Evaluate Associations
+    " Evaluate explicitly requested Associations
     IF selection-discovery-associations = abap_true OR
        selection-lines-associations     = abap_true.
 
       LOOP AT cs_hierarchy-associations INTO DATA(association).
-        DATA(cardinality) =  xco_adapter->get_cardinality( assocname = association->content( )->get_alias( )
-                                                           cds_name = cs_hierarchy-cds_name_uppercase
-                                                           hasparent = association->content( )->get_to_parent_indicator( )
-                                                           currentcardinality =  association->content( )->get_cardinality( ) ).
+        DATA(cardinality) =  xco_adapter->get_cardinality(
+                               assocname          = association->content( )->get_alias( )
+                               cds_name           = cs_hierarchy-cds_name_uppercase
+                               hasparent          = association->content( )->get_to_parent_indicator( )
+                               currentcardinality =  association->content( )->get_cardinality( ) ).
 
         APPEND VALUE #( target           = xco_adapter->get_cds_name_from_ddl( association->content( )->get_target( ) )
                         target_uppercase = to_upper( association->content( )->get_target( ) )
@@ -227,7 +250,7 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
       ENDLOOP.
     ENDIF.
 
-    " Evaluate Compositions
+    " Evaluate Parent/Child Compositions
     IF selection-discovery-compositions = abap_true OR
        selection-lines-compositions     = abap_true.
 
@@ -283,7 +306,7 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
 
   METHOD _initialize_xco_adapter.
-    xco_adapter =  zcl_vdm_diagram_xco_factory=>get_xco_adapter( ).
+    xco_adapter = zcl_vdm_diagram_xco_factory=>get_xco_adapter( ).
   ENDMETHOD.
 
 
@@ -291,8 +314,10 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
     TRY.
         DATA(cds_name_upper) = to_upper( cds_name ).
 
-        " Guard 1: Prevent infinite loops from bidirectional associations
-        IF line_exists( hierarchies[ cds_name_uppercase = cds_name_upper ] ).
+        " Guard 1: Prevent infinite loops from bidirectional associations.
+        " PERFORMANCE FIX: Leveraging the secondary hashed key 'by_name' for instant O(1) lookup
+        " instead of a linear table scan.
+        IF line_exists( hierarchies[ KEY by_name cds_name_uppercase = cds_name_upper ] ).
           RETURN.
         ENDIF.
 
@@ -323,7 +348,9 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
           RETURN.
         ENDIF.
 
-        " Extract all metadata for the current entity via the XCO adapter
+        " Extract all metadata for the current entity sequentially via the XCO adapter
+        " This preserves the exact baseline logic that safely rejects non-CDS objects (like tables)
+        " via the standard CX_XCO_AR_EXISTENCE_EXCEPTION mechanism without dumping.
         DATA(hierarchy) = VALUE ty_cds_hierarchy(
                                 cds_name_uppercase = cds_name_upper
                                 alias             = xco_adapter->get_cds_name_from_ddl( cds_name )
@@ -346,7 +373,7 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
         ENDLOOP.
 
       CATCH cx_xco_ar_existence_exception INTO DATA(existence_exception).
-        " Gracefully handle and log views that don't exist or are inactive
+        " Gracefully handle and log views that don't exist, are inactive, or are base tables (e.g. BUT000).
         APPEND xco_cp=>message( VALUE #(
                  msgty = 'E'
                  msgid = existence_exception->if_t100_message~t100key-msgid
@@ -369,15 +396,11 @@ CLASS ZCL_VDM_DIAGRAM_GENERATOR IMPLEMENTATION.
 
 
   METHOD generate_as_string.
+    " Execute the standard generation engine (returns a table of strings)
+    DATA(diagram_lines) = me->generate( ).
 
-    "Execute the standard generation engine (returns a table of strings)
-
-    DATA(lt_code) = me->generate( ).
-
-    " Compress into a single payload using the classic ABAP statement.
-
-    rv_diagram_string = concat_lines_of( table = lt_code
-                                       sep   = cl_abap_char_utilities=>newline ).
-
+    " Compress into a single payload using the classic ABAP statement
+    rv_diagram_string = concat_lines_of( table = diagram_lines
+                                         sep   = cl_abap_char_utilities=>newline ).
   ENDMETHOD.
 ENDCLASS.

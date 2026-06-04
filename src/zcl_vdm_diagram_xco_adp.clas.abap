@@ -1,3 +1,4 @@
+"! <p class="shorttext synchronized">VDM Diagram Generator Engine</p>
 "! © 2026 Silicon Street Limited. All Rights Reserved.
 "!
 "! USAGE TERMS:
@@ -14,36 +15,39 @@
 "! LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
 "!
 "! FOR COMMERCIAL LICENSING INQUIRIES: admin@siliconst.co.nz
-class ZCL_VDM_DIAGRAM_XCO_ADP definition
-  public
-  final
-  create public .
+CLASS zcl_vdm_diagram_xco_adp DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
 
-public section.
+  PUBLIC SECTION.
 
-  interfaces ZIF_VDM_diagram_XCO_ADAPTER .
+    INTERFACES zif_vdm_diagram_xco_adapter .
 
-  aliases GET_ASSOCIATIONS
-    for ZIF_VDM_diagram_XCO_ADAPTER~GET_ASSOCIATIONS .
-  aliases GET_CARDINALITY
-    for ZIF_VDM_diagram_XCO_ADAPTER~GET_CARDINALITY .
-  aliases GET_CDS_NAME_BY_DDL
-    for ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_NAME_FROM_DDL .
-  aliases GET_CDS_TYPE
-    for ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_TYPE .
-  aliases GET_COMPOSITIONS
-    for ZIF_VDM_diagram_XCO_ADAPTER~GET_COMPOSITIONS .
-  aliases GET_FIELDS
-    for ZIF_VDM_diagram_XCO_ADAPTER~GET_FIELDS .
-  aliases GET_SOURCES
-    for ZIF_VDM_diagram_XCO_ADAPTER~GET_SOURCES .
+    ALIASES get_associations
+      FOR zif_vdm_diagram_xco_adapter~get_associations .
+    ALIASES get_cardinality
+      FOR zif_vdm_diagram_xco_adapter~get_cardinality .
+    ALIASES get_cds_name_by_ddl
+      FOR zif_vdm_diagram_xco_adapter~get_cds_name_from_ddl .
+    ALIASES get_cds_type
+      FOR zif_vdm_diagram_xco_adapter~get_cds_type .
+    ALIASES get_compositions
+      FOR zif_vdm_diagram_xco_adapter~get_compositions .
+    ALIASES get_fields
+      FOR zif_vdm_diagram_xco_adapter~get_fields .
+    ALIASES get_sources
+      FOR zif_vdm_diagram_xco_adapter~get_sources .
+
   PROTECTED SECTION.
+    "! Reads the raw DDL source code from the database using standard DDIC APIs
     METHODS get_ddl_source
       IMPORTING
         cds_name           TYPE sxco_cds_object_name
       RETURNING
         VALUE(source_code) TYPE string.
 
+    "! Executes a cached PCRE regular expression against a target string
     METHODS extract_regex_matches
       IMPORTING
         pattern        TYPE string
@@ -52,12 +56,28 @@ public section.
         VALUE(matches) TYPE match_result_tab.
 
   PRIVATE SECTION.
+    " Cache structures to prevent redundant database reads for raw DDL
     TYPES: BEGIN OF ddl_cache_entry,
              name   TYPE sxco_cds_object_name,
              source TYPE string,
            END OF ddl_cache_entry.
 
-    DATA ddl_cache TYPE HASHED TABLE OF ddl_cache_entry WITH UNIQUE KEY name.
+    " PERFORMANCE FIX: Cache structure to prevent redundant Regex PCRE compilations
+    TYPES: BEGIN OF ty_regex_cache,
+             pattern TYPE string,
+             regex   TYPE REF TO cl_abap_regex,
+           END OF ty_regex_cache.
+
+    " PERFORMANCE FIX: Cache structure to prevent redundant ABAP Repository hits for entity types
+    TYPES: BEGIN OF ty_type_cache,
+             cds_name TYPE sxco_cds_object_name,
+             type     TYPE zvdm_diagram_cds_type,
+           END OF ty_type_cache.
+
+    " Hashed tables for high-performance O(1) lookups during deep recursion
+    DATA ddl_cache   TYPE HASHED TABLE OF ddl_cache_entry WITH UNIQUE KEY name.
+    DATA regex_cache TYPE HASHED TABLE OF ty_regex_cache WITH UNIQUE KEY pattern.
+    DATA type_cache  TYPE HASHED TABLE OF ty_type_cache WITH UNIQUE KEY cds_name.
 ENDCLASS.
 
 
@@ -65,19 +85,36 @@ ENDCLASS.
 CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
 
 
-  METHOD EXTRACT_REGEX_MATCHES.
+  METHOD extract_regex_matches.
+    DATA regex_object TYPE REF TO cl_abap_regex.
+
+    " PERFORMANCE FIX: Check if the regex pattern is already compiled in the local memory cache.
+    " Compiling PCRE expressions is CPU-heavy. Caching them prevents thousands of redundant compilations.
+    ASSIGN regex_cache[ pattern = pattern ] TO FIELD-SYMBOL(<cached_regex>).
+    IF sy-subrc = 0.
+      regex_object = <cached_regex>-regex.
+    ELSE.
+      TRY.
+          " Compile the PCRE regex and store the instantiated object in the cache for O(1) retrieval
+          regex_object = cl_abap_regex=>create_pcre( pattern = pattern ).
+          INSERT VALUE #( pattern = pattern regex = regex_object ) INTO TABLE regex_cache.
+        CATCH cx_sy_regex.
+          CLEAR matches.
+          RETURN.
+      ENDTRY.
+    ENDIF.
+
+    " Execute the standard matcher using the compiled (or cached) engine
     TRY.
-        " Standard PCRE wrapper to handle regex searches safely
-        DATA(regex)   = cl_abap_regex=>create_pcre( pattern = pattern ).
-        DATA(matcher) = regex->create_matcher( text = text ).
+        DATA(matcher) = regex_object->create_matcher( text = text ).
         matches       = matcher->find_all( ).
-      CATCH cx_sy_regex cx_sy_matcher.
+      CATCH cx_sy_matcher.
         CLEAR matches.
     ENDTRY.
   ENDMETHOD.
 
 
-  METHOD GET_DDL_SOURCE.
+  METHOD get_ddl_source.
     " Get Raw DDL source code for a given CDS name, with caching to optimize performance.
     DATA(normalized_name) = to_upper( cds_name ).
 
@@ -103,7 +140,7 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_NAME_FROM_DDL.
+  METHOD zif_vdm_diagram_xco_adapter~get_cds_name_from_ddl.
 
     " PURPOSE: Normalizes the CDS DDL name by parsing the source code.
     " This logic extracts the actual developer-defined name (preserving casing like CamelCase)
@@ -163,10 +200,19 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_CDS_TYPE.
+  METHOD zif_vdm_diagram_xco_adapter~get_cds_type.
+    DATA(normalized_cds_name) = CONV sxco_cds_object_name( to_upper( cds_name ) ).
+
+    " PERFORMANCE FIX: Check the hashed memory cache first to avoid redundant database reads
+    ASSIGN type_cache[ cds_name = normalized_cds_name ] TO FIELD-SYMBOL(<cache_entry>).
+    IF sy-subrc = 0.
+      type = <cache_entry>-type.
+      RETURN.
+    ENDIF.
+
     " Filter repository objects by the provided CDS name
     DATA(object_name_filter) = xco_abap_repository=>object_name->get_filter(
-                                 xco_abap_sql=>constraint->equal( cds_name ) ).
+                                 xco_abap_sql=>constraint->equal( normalized_cds_name ) ).
 
     " Fetch the DDL definitions matching the filter
     DATA(type_definitions) = xco_abap_repository=>objects->ddls->where(
@@ -176,10 +222,13 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
     IF lines( type_definitions ) = 1.
       type = type_definitions[ 1 ]->get_type( )->value.
     ENDIF.
+
+    " Store the result in the cache for future O(1) lookups
+    INSERT VALUE #( cds_name = normalized_cds_name type = type ) INTO TABLE type_cache.
   ENDMETHOD.
 
 
-  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_SOURCES.
+  METHOD zif_vdm_diagram_xco_adapter~get_sources.
     TRY.
         " Attempt to fetch data sources via standard XCO Content API
         CASE me->get_cds_type( cds_name ).
@@ -189,13 +238,13 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
           WHEN OTHERS. CLEAR sources.
         ENDCASE.
       CATCH cx_xco_runtime_exception.
-        " Fallback to manual Regex parsing if XCO cannot handle the view (e.g., UNIONs,JOINS)
-        DATA(lv_source_code) = get_ddl_source( cds_name ).
-        IF lv_source_code IS NOT INITIAL.
-          DATA(lt_m) = extract_regex_matches( pattern = `(?i)\b(?:from|join)\s+([a-zA-Z0-9_/]+)` text = lv_source_code ).
-          sources = VALUE #( FOR m IN lt_m WHERE ( submatches IS NOT INITIAL )
-                             LET s = m-submatches[ 1 ] IN
-                             ( substring( val = lv_source_code off = s-offset len = s-length ) ) ).
+        " Fallback to manual Regex parsing if XCO cannot handle the view (e.g., UNIONs, JOINS)
+        DATA(source_code) = get_ddl_source( cds_name ).
+        IF source_code IS NOT INITIAL.
+          DATA(regex_matches) = extract_regex_matches( pattern = `(?i)\b(?:from|join)\s+([a-zA-Z0-9_/]+)` text = source_code ).
+          sources = VALUE #( FOR match IN regex_matches WHERE ( submatches IS NOT INITIAL )
+                             LET match_sub = match-submatches[ 1 ] IN
+                             ( substring( val = source_code off = match_sub-offset len = match_sub-length ) ) ).
         ENDIF.
     ENDTRY.
   ENDMETHOD.
@@ -203,39 +252,39 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
 
   METHOD zif_vdm_diagram_xco_adapter~search_for_cds.
 
-" 1. Validate input to prevent massive, unconstrained repository reads
+    " 1. Validate input to prevent massive, unconstrained repository reads
     IF cds_search_string IS INITIAL.
       RETURN.
     ENDIF.
 
     " 2. Normalize the search pattern
     " Convert to uppercase and translate standard SAP wildcards (*) to SQL wildcards (%)
-    DATA(lv_pattern) = to_upper( cds_search_string ).
-    lv_pattern = replace( val = lv_pattern sub = '*' with = '%' occ = 0 ).
+    DATA(search_pattern) = to_upper( cds_search_string ).
+    search_pattern = replace( val = search_pattern sub = '*' with = '%' occ = 0 ).
 
     " 3. Build the XCO Object Name Filter using the pattern constraint
-    DATA(lo_name_filter) = xco_abap_repository=>object_name->get_filter(
-      xco_abap_sql=>constraint->contains_pattern( lv_pattern )
+    DATA(name_filter) = xco_abap_repository=>object_name->get_filter(
+      xco_abap_sql=>constraint->contains_pattern( search_pattern )
     ).
 
     " 4. Query the ABAP repository specifically for DDLs (Data Definition Language objects)
-    DATA(lt_ddl_objects) = xco_abap_repository=>objects->ddls->where(
-      VALUE #( ( lo_name_filter ) )
+    DATA(ddl_objects) = xco_abap_repository=>objects->ddls->where(
+      VALUE #( ( name_filter ) )
     )->in( xco_abap=>repository )->get( ).
 
     " 5. Extract the names from the returned XCO objects into the flat result table
-    cds_names = VALUE #( FOR lo_ddl IN lt_ddl_objects ( lo_ddl->name ) ).
+    cds_names = VALUE #( FOR ddl_object IN ddl_objects ( ddl_object->name ) ).
 
   ENDMETHOD.
 
 
-  METHOD ZIF_VDM_diagram_XCO_ADAPTER~GET_FIELDS.
+  METHOD zif_vdm_diagram_xco_adapter~get_fields.
     " Fetch all fields for the given entity
     fields = xco_cds=>entity( cds_name )->fields->all->get( ).
   ENDMETHOD.
 
 
-  METHOD ZIF_VDM_diagram_XCO_ADAPTER~get_associations.
+  METHOD zif_vdm_diagram_xco_adapter~get_associations.
     " Associations are type-specific in XCO; determine the type first
     CASE me->get_cds_type( cds_name ).
       WHEN 'V'. associations = xco_cds=>view( cds_name )->associations->all->get( ).
@@ -245,8 +294,7 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method ZIF_VDM_DIAGRAM_XCO_ADAPTER~GET_CARDINALITY.
-
+  METHOD zif_vdm_diagram_xco_adapter~get_cardinality.
 
     "----> Additional Cardinality logic
     " XCO occasionally returns [0..1] for associations defined as [1] due to how
@@ -258,7 +306,7 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
     IF hasparent = abap_true. "If its a Parent Relationship we only want to show the cardinality on the child side
       cardinality-min = 1.
       cardinality-max = 1.
-      return.
+      RETURN.
     ENDIF.
 
     " Only process if the current cardinality is 0..1
@@ -266,7 +314,7 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    "Get DDL Source
+    " Get DDL Source
     DATA(source) = get_ddl_source( cds_name ).
     IF source IS INITIAL OR assocname IS INITIAL.
       RETURN.
@@ -293,6 +341,7 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
     DATA(esc_name) = replace( val = assocname sub = '/' with = '\/' occ = 0 ).
     DATA(pattern) = `(?i)association\s*(?:\[([^\]]*)\])?[^;]*?\bas\s+` && esc_name && `\b`.
 
+    " Execute optimized cached Regex method
     DATA(matches) = extract_regex_matches( pattern = pattern text = line ).
 
     IF lines( matches ) > 0.
@@ -300,8 +349,8 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
 
       " 5. Check for explicit [ 1 ]
       IF lines( match-submatches ) > 0 AND match-submatches[ 1 ]-length > 0.
-        DATA(s) = match-submatches[ 1 ].
-        DATA(val) = condense( val = substring( val = line off = s-offset len = s-length ) from = ` ` to = `` ).
+        DATA(sub_match) = match-submatches[ 1 ].
+        DATA(val) = condense( val = substring( val = line off = sub_match-offset len = sub_match-length ) from = ` ` to = `` ).
 
         IF val = '1'.
           cardinality-min = 1.
@@ -310,16 +359,15 @@ CLASS ZCL_VDM_DIAGRAM_XCO_ADP IMPLEMENTATION.
       ENDIF.
 
     ENDIF.
-  endmethod.
+  ENDMETHOD.
 
 
-  method ZIF_VDM_DIAGRAM_XCO_ADAPTER~GET_COMPOSITIONS.
-        " Compositions are type-specific in XCO; determine the type first
+  METHOD zif_vdm_diagram_xco_adapter~get_compositions.
+    " Compositions are type-specific in XCO; determine the type first
     CASE me->get_cds_type( cds_name ).
       WHEN 'V'. compositions = xco_cds=>view( cds_name )->compositions->all->get( ).
       WHEN 'W'. compositions = xco_cds=>view_entity( cds_name )->compositions->all->get( ).
       WHEN OTHERS. CLEAR compositions.
     ENDCASE.
-
-  endmethod.
+  ENDMETHOD.
 ENDCLASS.
