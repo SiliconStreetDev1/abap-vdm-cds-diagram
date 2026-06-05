@@ -5,5 +5,5 @@ define role ZI_VDM_Diagram_Variant {
     select
       on
         ZI_VDM_Diagram_Variant
-          where CreatedBy = aspect user  or IsGlobal = 'X';
+          where CreatedBy = aspect user  or IsGlobal = 'X' or isUnlisted = 'X';
 }

@@ -13,6 +13,7 @@ define root view entity ZC_VDM_Diagram_Variant
       LastChangedAt,
       LocalLastChangedAt,
       IsGlobal,
+      isUnlisted,
       
       @UI.hidden: true
       Configuration

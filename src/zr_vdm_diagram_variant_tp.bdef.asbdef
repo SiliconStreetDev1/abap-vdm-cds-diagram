@@ -26,6 +26,7 @@ etag master LastChangedAt
     LastChangedAt = last_changed_at;
     LocalLastChangedAt = local_last_changed_at;
     IsGlobal = is_global;
+    isUnlisted = is_unlisted;
     Configuration = configuration;
   }
 }

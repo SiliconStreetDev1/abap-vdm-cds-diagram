@@ -18,5 +18,6 @@ define view entity ZI_VDM_Diagram_Variant
   @Semantics.systemDateTime.localInstanceLastChangedAt: true
   local_last_changed_at as LocalLastChangedAt,
   is_global as IsGlobal,
+    is_unlisted as  isUnlisted,
   configuration as Configuration
 }

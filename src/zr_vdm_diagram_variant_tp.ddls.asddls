@@ -12,5 +12,6 @@ define root view entity ZR_VDM_Diagram_Variant_TP
   LastChangedAt,
   LocalLastChangedAt,
   IsGlobal,
+  isUnlisted,
   Configuration
 }
