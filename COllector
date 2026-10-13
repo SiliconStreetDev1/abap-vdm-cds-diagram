@@ -1,0 +1,79 @@
+CLASS zcl_rap_msg_collector DEFINITION
+  PUBLIC FINAL CREATE PRIVATE.
+
+  PUBLIC SECTION.
+    CLASS-METHODS start.
+
+    "! Last statement of every validation: hands over its failed-x / reported-x.
+    "! Lines are merged into the single row kept per (root, entity).
+    CLASS-METHODS collect
+      IMPORTING root     TYPE abp_root_entity_name
+                entity   TYPE abp_entity_name
+                failed   TYPE ANY TABLE OPTIONAL
+                reported TYPE ANY TABLE OPTIONAL.
+
+    "! One row per node in each tab, all validations' lines collated.
+    CLASS-METHODS stop
+      EXPORTING failed   TYPE abp_behv_response_tab
+                reported TYPE abp_behv_response_tab.
+
+  PRIVATE SECTION.
+    CLASS-DATA: armed        TYPE abap_bool,
+                failed_buf   TYPE abp_behv_response_tab,
+                reported_buf TYPE abp_behv_response_tab.
+
+    CLASS-METHODS merge_into
+      IMPORTING root   TYPE abp_root_entity_name
+                entity TYPE abp_entity_name
+                lines  TYPE ANY TABLE
+      CHANGING  buf    TYPE abp_behv_response_tab.
+ENDCLASS.
+
+
+CLASS zcl_rap_msg_collector IMPLEMENTATION.
+
+  METHOD start.
+    CLEAR: failed_buf, reported_buf.   " clear first: self-heals a dangling arm
+    armed = abap_true.
+  ENDMETHOD.
+
+  METHOD collect.
+    CHECK armed = abap_true.
+    IF failed IS SUPPLIED AND failed IS NOT INITIAL.
+      merge_into( EXPORTING root = root entity = entity lines = failed
+                  CHANGING  buf  = failed_buf ).
+    ENDIF.
+    IF reported IS SUPPLIED AND reported IS NOT INITIAL.
+      merge_into( EXPORTING root = root entity = entity lines = reported
+                  CHANGING  buf  = reported_buf ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD merge_into.
+    FIELD-SYMBOLS <dest> TYPE ANY TABLE.
+
+    READ TABLE buf ASSIGNING FIELD-SYMBOL(<row>)
+         WITH KEY root_name = root entity_name = entity.
+
+    IF sy-subrc = 0.
+      " Same entity → same line type → plain generic merge, no RTTS.
+      ASSIGN <row>-entries->* TO <dest>.
+      INSERT LINES OF lines INTO TABLE <dest>.
+    ELSE.
+      DATA ref TYPE REF TO data.
+      CREATE DATA ref LIKE lines.
+      ASSIGN ref->* TO <dest>.
+      <dest> = lines.                     " snapshot by value
+      APPEND VALUE #( root_name   = root
+                      entity_name = entity
+                      entries     = ref ) TO buf.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD stop.
+    failed   = failed_buf.
+    reported = reported_buf.
+    CLEAR: failed_buf, reported_buf, armed.
+  ENDMETHOD.
+
+ENDCLASS.
